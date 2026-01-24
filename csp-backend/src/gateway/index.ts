@@ -26,7 +26,8 @@ expressApp.use((req: Request, res: Response, next: NextFunction) => {
 });
 
 // Mount routes at root
-expressApp.use("/", routes);
+// Mount routes (handle both root and /api prefix for Vercel)
+expressApp.use(["/api", "/"], routes);
 
 // Log all registered routes for debugging
 console.log("Routes registered:");
