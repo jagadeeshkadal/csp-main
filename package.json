@@ -5,6 +5,7 @@
     "csp-frontend"
   ],
   "scripts": {
+    "build": "npm run build --workspace=csp-frontend",
     "postinstall": "npx prisma@6.19.1 generate --schema=csp-backend/prisma/schema.prisma"
   },
   "dependencies": {
