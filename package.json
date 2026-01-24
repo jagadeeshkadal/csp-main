@@ -9,4 +9,7 @@
     "build": "npm run build --workspace=csp-frontend && cp -r csp-frontend/dist ./public",
     "postinstall": "npm run generate --workspace=csp-backend"
   },
+  "devDependencies": {
+    "@vercel/node": "^5.5.27"
+  }
 }
