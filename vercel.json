@@ -3,7 +3,12 @@
     "builds": [
         {
             "src": "csp-backend/api/index.ts",
-            "use": "@vercel/node"
+            "use": "@vercel/node",
+            "config": {
+                "includeFiles": [
+                    "csp-backend/prisma/schema.prisma"
+                ]
+            }
         },
         {
             "src": "csp-frontend/package.json",
