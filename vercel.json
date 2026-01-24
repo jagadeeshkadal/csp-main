@@ -18,17 +18,14 @@
             }
         }
     ],
-    "routes": [
+    "rewrites": [
         {
-            "src": "/api/(.*)",
-            "dest": "/csp-backend/api/index.ts"
+            "source": "/api/(.*)",
+            "destination": "/csp-backend/api/index.ts"
         },
         {
-            "handle": "filesystem"
-        },
-        {
-            "src": "/(.*)",
-            "dest": "/index.html"
+            "source": "/(.*)",
+            "destination": "/$1"
         }
     ]
 }
