@@ -5,6 +5,8 @@
     "csp-frontend"
   ],
   "scripts": {
-    "install-all": "npm install && npm install --prefix csp-backend && npm install --prefix csp-frontend"
-  }
+    "install-all": "npm install && npm install --prefix csp-backend && npm install --prefix csp-frontend",
+    "build": "npm run build --workspace=csp-frontend && cp -r csp-frontend/dist ./public",
+    "postinstall": "npm run generate --workspace=csp-backend"
+  },
 }

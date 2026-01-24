@@ -6,34 +6,23 @@
             "headers": [
                 {
                     "key": "Cross-Origin-Opener-Policy",
-                    "value": "same-origin-allow-popups"
+                    "value": "unsafe-none"
+                },
+                {
+                    "key": "Cross-Origin-Embedder-Policy",
+                    "value": "unsafe-none"
                 }
             ]
-        }
-    ],
-    "builds": [
-        {
-            "src": "api/index.ts",
-            "use": "@vercel/node",
-            "config": {
-                "includeFiles": [
-                    "csp-backend/prisma/schema.prisma"
-                ]
-            }
-        },
-        {
-            "src": "csp-frontend/package.json",
-            "use": "@vercel/static-build"
         }
     ],
     "rewrites": [
         {
             "source": "/api/(.*)",
-            "destination": "/api/index"
+            "destination": "/api/index.ts"
         },
         {
             "source": "/(.*)",
-            "destination": "/$1"
+            "destination": "/index.html"
         }
     ]
 }
