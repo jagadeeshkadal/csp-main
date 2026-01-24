@@ -6,10 +6,11 @@
   ],
   "scripts": {
     "install-all": "npm install && npm install --prefix csp-backend && npm install --prefix csp-frontend",
-    "build": "npm run build --workspace=csp-frontend && cp -r csp-frontend/dist ./public",
-    "postinstall": "npx prisma@6.19.1 generate --schema=csp-backend/prisma/schema.prisma"
+    "build": "npm run build --workspace=csp-frontend && mkdir -p public && cp -rv csp-frontend/dist/. public/",
+    "postinstall": "prisma generate --schema=csp-backend/prisma/schema.prisma"
   },
   "devDependencies": {
-    "@vercel/node": "^5.5.27"
+    "@vercel/node": "^5.5.27",
+    "prisma": "6.19.1"
   }
 }
