@@ -7,7 +7,7 @@
         },
         {
             "source": "/(.*)",
-            "destination": "/csp-frontend/dist/index.html"
+            "destination": "/index.html"
         }
     ]
 }
