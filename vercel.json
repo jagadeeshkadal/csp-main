@@ -1,8 +1,19 @@
 {
     "version": 2,
+    "headers": [
+        {
+            "source": "/(.*)",
+            "headers": [
+                {
+                    "key": "Cross-Origin-Opener-Policy",
+                    "value": "same-origin-allow-popups"
+                }
+            ]
+        }
+    ],
     "builds": [
         {
-            "src": "csp-backend/api/index.ts",
+            "src": "api/index.ts",
             "use": "@vercel/node",
             "config": {
                 "includeFiles": [
@@ -12,16 +23,13 @@
         },
         {
             "src": "csp-frontend/package.json",
-            "use": "@vercel/static-build",
-            "config": {
-                "distDir": "dist"
-            }
+            "use": "@vercel/static-build"
         }
     ],
     "rewrites": [
         {
             "source": "/api/(.*)",
-            "destination": "/csp-backend/api/index.ts"
+            "destination": "/api/index"
         },
         {
             "source": "/(.*)",

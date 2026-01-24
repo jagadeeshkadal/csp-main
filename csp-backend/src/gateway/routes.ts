@@ -14,8 +14,8 @@ console.log("🔵 voiceController:", voiceController ? "✅ loaded" : "❌ not l
 
 // Debug route to test if routes are working
 router.get("/test", (req: Request, res: Response) => {
-  console.log("Test route hit!");
-  res.json({ message: "Routes are working!" });
+  console.log("Health check hit!");
+  res.json({ status: "ok", message: "API is reachable!", timestamp: new Date() });
 });
 
 // Auth routes
