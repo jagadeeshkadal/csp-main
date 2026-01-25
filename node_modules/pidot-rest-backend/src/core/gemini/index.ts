@@ -6,17 +6,23 @@ const MAX_RECENT_MESSAGES = 10; // Keep last 10 messages as-is
 const MAX_CONTEXT_LENGTH = 30000; // Approximate token limit for context
 
 // Model name - gemini-1.5-flash is robust and fast.
-const MODEL_NAME = process.env.GEMINI_MODEL || "gemini-1.5-flash";
+const MODEL_NAME = (process.env.GEMINI_MODEL || "gemini-1.5-flash").trim();
 
 /**
  * Function to get active model and SDK instance
  * Initialized lazily to ensure environment variables are fresh.
  */
 const getGenAI = () => {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = (process.env.GEMINI_API_KEY || "").trim();
   if (!apiKey) {
     throw new Error("Gemini API key not configured. Please set GEMINI_API_KEY in Vercel settings.");
   }
+
+  // Log masked API key for user to verify in Vercel logs
+  const maskedKey = `${apiKey.substring(0, 4)}...${apiKey.substring(apiKey.length - 4)}`;
+  console.log(`[Gemini] 🔑 Initializing with key: ${maskedKey}`);
+  console.log(`[Gemini] 🏷️  Active model: ${MODEL_NAME}`);
+
   return new GoogleGenerativeAI(apiKey);
 };
 

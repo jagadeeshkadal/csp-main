@@ -18,6 +18,24 @@ router.get("/test", (req: Request, res: Response) => {
   res.json({ status: "ok", message: "API is reachable!", timestamp: new Date() });
 });
 
+// Debug route to test Gemini API directly
+router.get("/test/gemini", async (req: Request, res: Response) => {
+  console.log("Gemini Health check hit!");
+  try {
+    const { processUserMessage } = await import("../core/gemini/index.js");
+    // Just a tiny ping message
+    const response = await processUserMessage("ping", [], { name: "System Test", id: "system" } as any);
+    res.json({ status: "ok", geminiResponse: response });
+  } catch (error: any) {
+    console.error("Gemini Health Check Failed:", error);
+    res.status(500).json({
+      status: "fail",
+      error: error.message,
+      maskedKey: process.env.GEMINI_API_KEY ? `${process.env.GEMINI_API_KEY.substring(0, 4)}...${process.env.GEMINI_API_KEY.substring(process.env.GEMINI_API_KEY.length - 4)}` : "missing"
+    });
+  }
+});
+
 // Auth routes
 router.post("/sso-signup", authController.ssoSignup);
 router.post("/sign-in", authController.signIn);
