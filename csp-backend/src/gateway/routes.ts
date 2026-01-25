@@ -21,18 +21,32 @@ router.get("/test", (req: Request, res: Response) => {
 // Debug route to test Gemini API directly
 router.get("/test/gemini", async (req: Request, res: Response) => {
   console.log("Gemini Health check hit!");
+  const results: any[] = [];
+  const key = (process.env.GEMINI_API_KEY || "").trim().replace(/^["']|["']$/g, '');
+  const modelsToTest = ["gemini-1.5-flash", "gemini-1.5-pro"];
+
   try {
-    const { processUserMessage } = await import("../core/gemini/index.js");
-    // Just a tiny ping message
-    const response = await processUserMessage("ping", [], { name: "System Test", id: "system" } as any);
-    res.json({ status: "ok", geminiResponse: response });
-  } catch (error: any) {
-    console.error("Gemini Health Check Failed:", error);
-    res.status(500).json({
-      status: "fail",
-      error: error.message,
-      maskedKey: process.env.GEMINI_API_KEY ? `${process.env.GEMINI_API_KEY.substring(0, 4)}...${process.env.GEMINI_API_KEY.substring(process.env.GEMINI_API_KEY.length - 4)}` : "missing"
+    const { GoogleGenerativeAI } = await import("@google/generative-ai");
+    const genAI = new GoogleGenerativeAI(key);
+
+    for (const modelName of modelsToTest) {
+      try {
+        const model = genAI.getGenerativeModel({ model: modelName });
+        const result = await model.generateContent("ping");
+        results.push({ model: modelName, status: "ok", response: result.response.text().substring(0, 20) });
+      } catch (err: any) {
+        results.push({ model: modelName, status: "fail", error: err.message });
+      }
+    }
+
+    res.json({
+      status: results.some(r => r.status === "ok") ? "ok" : "fail",
+      results,
+      maskedKey: key ? `${key.substring(0, 4)}...${key.substring(key.length - 4)}` : "missing",
+      envModel: process.env.GEMINI_MODEL || "not_set"
     });
+  } catch (globalError: any) {
+    res.status(500).json({ status: "error", message: globalError.message });
   }
 });
 

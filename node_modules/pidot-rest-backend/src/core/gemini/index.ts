@@ -6,14 +6,19 @@ const MAX_RECENT_MESSAGES = 10; // Keep last 10 messages as-is
 const MAX_CONTEXT_LENGTH = 30000; // Approximate token limit for context
 
 // Model name - gemini-1.5-flash is robust and fast.
-const MODEL_NAME = (process.env.GEMINI_MODEL || "gemini-1.5-flash").trim();
+const getSafeEnv = (name: string, fallback: string = "") => {
+  return (process.env[name] || fallback).trim().replace(/^["']|["']$/g, '');
+};
+
+// Model name - gemini-1.5-flash is robust and fast.
+const MODEL_NAME = getSafeEnv("GEMINI_MODEL", "gemini-1.5-flash");
 
 /**
  * Function to get active model and SDK instance
  * Initialized lazily to ensure environment variables are fresh.
  */
 const getGenAI = () => {
-  const apiKey = (process.env.GEMINI_API_KEY || "").trim();
+  const apiKey = getSafeEnv("GEMINI_API_KEY");
   if (!apiKey) {
     throw new Error("Gemini API key not configured. Please set GEMINI_API_KEY in Vercel settings.");
   }
