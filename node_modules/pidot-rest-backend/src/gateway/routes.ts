@@ -23,7 +23,7 @@ router.get("/test/gemini", async (req: Request, res: Response) => {
   console.log("Gemini Health check hit!");
   const results: any[] = [];
   const key = (process.env.GEMINI_API_KEY || "").trim().replace(/^["']|["']$/g, '');
-  const modelsToTest = ["gemini-1.5-flash", "gemini-1.5-pro"];
+  const modelsToTest = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro"];
 
   try {
     const { GoogleGenerativeAI } = await import("@google/generative-ai");
