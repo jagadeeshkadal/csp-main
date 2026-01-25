@@ -10,7 +10,7 @@ if (!apiKey) {
 }
 
 const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
-const MODEL_NAME = process.env.GEMINI_MODEL || "gemini-2.5-flash-preview-09-2025";
+const MODEL_NAME = process.env.GEMINI_MODEL || "gemini-1.5-flash";
 
 /**
  * Process text message with Gemini and generate voice response
@@ -74,7 +74,7 @@ ${agent.name}:`;
 
     // Generate audio using Kokoro via Replicate
     const agentAudioUrl = await generateAudioWithKokoro(agentResponse);
-    
+
     if (agentAudioUrl) {
       console.log(`[Voice] ✅ Audio: ${agentAudioUrl.substring(0, 60)}...`);
     } else {
@@ -104,37 +104,37 @@ const generateAudioWithKokoro = async (text: string): Promise<string | null> => 
     console.log(`[Replicate] 🎵 Calling API (text: ${text.length} chars)...`);
 
     const replicate = new Replicate({ auth: replicateToken });
-    
+
     const startTime = Date.now();
-    
+
     // Use model from env or default to Orpheus model
     const modelId = process.env.REPLICATE_TTS_MODEL || "lucataco/orpheus-3b-0.1-ft:79f2a473e6a9720716a473d9b2f2951437dbf91dc02ccb7079fb3d89b881207f";
-    
+
     // Default voice based on model (Orpheus supports: tara, dan, josh, emma)
     // You can override with REPLICATE_TTS_VOICE env variable
     const defaultVoice = process.env.REPLICATE_TTS_VOICE || "tara";
-    
+
     const input = {
       text: text,
       voice: defaultVoice
     };
-    
+
     // Log request body before sending
     const requestBody = {
       model: modelId,
       input: input
     };
     console.log(`[Replicate] 📤 Request body:`, JSON.stringify(requestBody, null, 2));
-    
+
     const output = await replicate.run(modelId as any, { input });
 
     console.log("output", output);
     console.log(`[Replicate] 📥 Output type: ${typeof output} | constructor: ${output?.constructor?.name}`);
     console.log(`[Replicate] 📥 Has url method: ${typeof (output as any)?.url === 'function'}`);
-    
+
     const duration = Date.now() - startTime;
     console.log(`[Replicate] ✅ Response in ${duration}ms | type: ${typeof output} | isArray: ${Array.isArray(output)}`);
-    
+
     if (!output) {
       console.error(`[Replicate] ❌ Output is null/undefined`);
       return null;
@@ -146,7 +146,7 @@ const generateAudioWithKokoro = async (text: string): Promise<string | null> => 
         const urlResult = (output as any).url();
         console.log(`[Replicate] 📥 url() result:`, urlResult);
         console.log(`[Replicate] 📥 url() result type: ${typeof urlResult}`);
-        
+
         // url() might return a URL object or a string
         let audioUrl: string;
         if (urlResult && typeof urlResult === "object" && "href" in urlResult) {
@@ -157,13 +157,13 @@ const generateAudioWithKokoro = async (text: string): Promise<string | null> => 
         } else if (urlResult && typeof urlResult === "object" && "then" in urlResult) {
           // If it's a promise, await it
           const resolved = await urlResult;
-          audioUrl = resolved && typeof resolved === "object" && "href" in resolved 
-            ? (resolved as URL).toString() 
+          audioUrl = resolved && typeof resolved === "object" && "href" in resolved
+            ? (resolved as URL).toString()
             : String(resolved);
         } else {
           audioUrl = String(urlResult);
         }
-        
+
         const audioUrlString: string = typeof audioUrl === "string" ? audioUrl : String(audioUrl);
         console.log(`[Replicate] ✅ URL from FileOutput: ${audioUrlString?.substring(0, 80)}...`);
         if (audioUrlString && typeof audioUrlString === "string" && (audioUrlString.startsWith('http://') || audioUrlString.startsWith('https://'))) {
@@ -178,13 +178,13 @@ const generateAudioWithKokoro = async (text: string): Promise<string | null> => 
     if (Array.isArray(output) && output.length > 0) {
       const firstOutput = output[0];
       console.log(`[Replicate] 📦 Array output (length: ${output.length}) | first item type: ${typeof firstOutput}`);
-      
+
       // If first item is a URL string
       if (typeof firstOutput === "string" && (firstOutput.startsWith('http://') || firstOutput.startsWith('https://'))) {
         console.log(`[Replicate] ✅ URL from array: ${firstOutput.substring(0, 60)}...`);
         return firstOutput;
       }
-      
+
       // If first item has a url() method
       if (firstOutput && typeof firstOutput === "object" && typeof (firstOutput as any).url === "function") {
         try {

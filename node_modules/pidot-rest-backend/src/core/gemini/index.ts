@@ -4,8 +4,8 @@ import { IEmailMessage, IAIAgent } from "../../interfaces";
 // Configuration
 const MAX_RECENT_MESSAGES = 10; // Keep last 10 messages as-is
 const MAX_CONTEXT_LENGTH = 30000; // Approximate token limit for context
-// Model name - using gemini-2.5-flash-lite as default
-const MODEL_NAME = process.env.GEMINI_MODEL || "gemini-2.5-flash-preview-09-2025"; // Gemini 2.5 Flash Preview
+// Model name - using gemini-1.5-flash as default (stable and fast)
+const MODEL_NAME = process.env.GEMINI_MODEL || "gemini-1.5-flash";
 
 // Initialize Gemini with API key
 // Note: You can get the API key from either:
@@ -79,7 +79,7 @@ export const prepareConversationContext = async (
   agent: IAIAgent
 ): Promise<string> => {
   console.log(`[Gemini] 📚 Preparing conversation context: ${messages.length} total messages`);
-  
+
   if (messages.length === 0) {
     console.log("[Gemini] ℹ️  No messages in conversation, returning empty context");
     return "";
@@ -129,7 +129,7 @@ export const generateAgentResponse = async (
 ): Promise<string> => {
   console.log(`[Gemini] 🚀 Starting agent response generation for: ${agent.name}`);
   console.log(`[Gemini] 👤 User message: "${userMessage.substring(0, 100)}${userMessage.length > 100 ? '...' : ''}"`);
-  
+
   if (!genAI) {
     throw new Error("Gemini API key not configured. Please set GEMINI_API_KEY in your .env file");
   }
@@ -152,27 +152,27 @@ ${conversationContext ? `Conversation history:\n${conversationContext}\n\n` : ""
 ${agent.name}:`;
 
   console.log(`[Gemini] 📤 Sending request to Gemini API (model: ${MODEL_NAME}, prompt length: ${fullPrompt.length} characters)`);
-  
+
   try {
     const startTime = Date.now();
     const result = await model.generateContent(fullPrompt);
     const response = result.response;
     const agentResponse = response.text();
     const duration = Date.now() - startTime;
-    
+
     console.log(`[Gemini] ✅ Response received in ${duration}ms`);
     console.log(`[Gemini] 💬 Agent response (${agentResponse.length} characters): "${agentResponse.substring(0, 200)}${agentResponse.length > 200 ? '...' : ''}"`);
-    
+
     return agentResponse;
   } catch (error: any) {
-    console.error("[Gemini] ❌ Error generating agent response:", error);
     console.error("[Gemini] ❌ Error details:", {
       status: error.status,
       statusText: error.statusText,
       message: error.message,
-      errorDetails: error.errorDetails
+      errorDetails: error.errorDetails,
+      stack: error.stack
     });
-    throw new Error("Failed to generate agent response");
+    throw new Error(`Gemini failed: ${error.message || 'Unknown error'}`);
   }
 };
 
@@ -187,7 +187,7 @@ export const processUserMessage = async (
   console.log(`[Gemini] ========================================`);
   console.log(`[Gemini] 🎯 Processing user message for agent: ${agent.name}`);
   console.log(`[Gemini] 📊 Total messages in conversation: ${allMessages.length}`);
-  
+
   // Prepare conversation context (with summarization if needed)
   const context = await prepareConversationContext(allMessages, agent);
 
@@ -196,6 +196,6 @@ export const processUserMessage = async (
 
   console.log(`[Gemini] ✅ Successfully generated response for ${agent.name}`);
   console.log(`[Gemini] ========================================`);
-  
+
   return agentResponse;
 };

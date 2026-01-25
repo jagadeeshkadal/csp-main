@@ -36,13 +36,13 @@ export const createConversation = async (params: {
   }
 
   const newConversation = await conversationDML.createConversation(parsed.data);
-  
+
   // Fetch the full conversation with relations
   const fullConversation = await conversationDML.getConversationById(newConversation.id);
   if (!fullConversation) {
     throw new NotFoundError("Failed to retrieve created conversation");
   }
-  
+
   return fullConversation;
 };
 
@@ -51,7 +51,7 @@ export const getConversation = async (id: string, userId: string): Promise<IEmai
   console.log(`[getConversation] userId type: ${typeof userId}, value: ${userId}`);
   const conversation = await conversationDML.getConversationById(id);
   console.log(`[getConversation] Found conversation:`, conversation ? `userId=${conversation.userId} (type: ${typeof conversation.userId})` : 'null');
-  
+
   if (!conversation) {
     console.error(`[getConversation] Conversation ${id} not found`);
     throw new NotFoundError("Conversation not found");
@@ -60,9 +60,9 @@ export const getConversation = async (id: string, userId: string): Promise<IEmai
   // Convert both to strings for comparison (MongoDB ObjectId might be different type)
   const conversationUserId = String(conversation.userId);
   const requestUserId = String(userId);
-  
+
   console.log(`[getConversation] Comparing userIds: "${conversationUserId}" === "${requestUserId}"`);
-  
+
   if (conversationUserId !== requestUserId) {
     console.error(`[getConversation] User mismatch: conversation.userId="${conversationUserId}", requested userId="${requestUserId}"`);
     throw new UnauthorizedError("Unauthorized access to conversation");
@@ -103,7 +103,7 @@ export const getOrCreateConversation = async (params: {
     console.error(`[getOrCreateConversation] Failed to retrieve created conversation ${newConversation.id}`);
     throw new NotFoundError("Failed to retrieve created conversation");
   }
-  
+
   console.log(`[getOrCreateConversation] Returning conversation ${fullConversation.id} with userId=${fullConversation.userId}`);
   return fullConversation;
 };
@@ -147,12 +147,12 @@ export const sendMessage = async (params: {
     console.log(`[Conversation] 🤖 User message received, generating AI response...`);
     console.log(`[Conversation] 👤 User: "${params.content.substring(0, 100)}${params.content.length > 100 ? '...' : ''}"`);
     console.log(`[Conversation] 🤖 Agent: ${conversation.agent.name} (ID: ${conversation.agent.id})`);
-    
+
     try {
       // Get all messages including the one just created
       const allMessages = await conversationDML.getMessagesByConversationId(params.conversationId);
       console.log(`[Conversation] 📨 Retrieved ${allMessages.length} messages from conversation`);
-      
+
       // Generate agent response using Gemini
       const { processUserMessage } = await import("../gemini");
       const agentResponse = await processUserMessage(
@@ -179,7 +179,7 @@ export const sendMessage = async (params: {
         await conversationDML.createMessage({
           conversationId: params.conversationId,
           senderType: "agent",
-          content: "I apologize, but I'm having trouble processing your message right now. Please try again.",
+          content: `I apologize, but I'm having trouble processing your message right now. (Error: ${error instanceof Error ? error.message : String(error)}). Please try again.`,
           isRead: false,
         });
         console.log("[Conversation] ✅ Fallback message saved");
