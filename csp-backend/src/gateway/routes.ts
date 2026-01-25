@@ -20,30 +20,36 @@ router.get("/test", (req: Request, res: Response) => {
 
 // Debug route to test Gemini API directly
 router.get("/test/gemini", async (req: Request, res: Response) => {
-  console.log("Gemini Health check hit!");
-  const results: any[] = [];
+  console.log("Gemini Health check hit (RAW FETCH)!");
   const key = (process.env.GEMINI_API_KEY || "").trim().replace(/^["']|["']$/g, '');
-  const modelsToTest = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro"];
+  const modelToTest = "gemini-1.5-flash";
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelToTest}:generateContent?key=${key}`;
 
   try {
-    const { GoogleGenerativeAI } = await import("@google/generative-ai");
-    const genAI = new GoogleGenerativeAI(key);
+    // 1. Try a raw fetch to see exactly what Google returns
+    const pingResponse = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contents: [{ parts: [{ text: "ping" }] }] })
+    });
 
-    for (const modelName of modelsToTest) {
-      try {
-        const model = genAI.getGenerativeModel({ model: modelName });
-        const result = await model.generateContent("ping");
-        results.push({ model: modelName, status: "ok", response: result.response.text().substring(0, 20) });
-      } catch (err: any) {
-        results.push({ model: modelName, status: "fail", error: err.message });
-      }
-    }
+    const pingData = await pingResponse.json();
+
+    // 2. Try to list models raw
+    const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${key}`;
+    const listResponse = await fetch(listUrl);
+    const listData = await listResponse.json();
 
     res.json({
-      status: results.some(r => r.status === "ok") ? "ok" : "fail",
-      results,
-      maskedKey: key ? `${key.substring(0, 4)}...${key.substring(key.length - 4)}` : "missing",
-      envModel: process.env.GEMINI_MODEL || "not_set"
+      status: pingResponse.ok ? "ok" : "fail",
+      pingResult: {
+        ok: pingResponse.ok,
+        status: pingResponse.status,
+        data: pingData
+      },
+      availableModels: listData.models ? listData.models.map((m: any) => m.name) : "could_not_list",
+      listRaw: listData,
+      maskedKey: key ? `${key.substring(0, 4)}...${key.substring(key.length - 4)}` : "missing"
     });
   } catch (globalError: any) {
     res.status(500).json({ status: "error", message: globalError.message });
