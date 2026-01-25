@@ -1,5 +1,5 @@
-import prisma from "../db/prisma";
-import { IAIAgent } from "../interfaces";
+import prisma from "../db/prisma.js";
+import { IAIAgent } from "../interfaces/index.js";
 
 type AgentCreateData = {
   name: string;
@@ -65,7 +65,7 @@ const searchAgents = async (searchTerm: string): Promise<IAIAgent[]> => {
   });
   // Filter case-insensitively in memory
   const lowerSearchTerm = searchTerm.toLowerCase();
-  return agents.filter((agent: any) => 
+  return agents.filter((agent: any) =>
     agent.name.toLowerCase().includes(lowerSearchTerm) ||
     (agent.description && agent.description.toLowerCase().includes(lowerSearchTerm))
   ) as IAIAgent[];

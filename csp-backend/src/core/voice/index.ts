@@ -1,8 +1,8 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import Replicate from "replicate";
-import { IAIAgent, IEmailMessage } from "../../interfaces";
-import { voiceDML } from "../../dml/voice";
-import { conversationDML } from "../../dml/conversation";
+import { IAIAgent, IEmailMessage } from "../../interfaces/index.js";
+import { voiceDML } from "../../dml/voice.js";
+import { conversationDML } from "../../dml/conversation.js";
 
 const apiKey = process.env.GEMINI_API_KEY;
 if (!apiKey) {

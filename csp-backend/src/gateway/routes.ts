@@ -1,8 +1,8 @@
 import express, { Request, Response } from "express";
-import authController from "./controller/auth";
-import agentController from "./controller/agent";
-import conversationController from "./controller/conversation";
-import voiceController from "./controller/voice";
+import authController from "./controller/auth.js";
+import agentController from "./controller/agent.js";
+import conversationController from "./controller/conversation.js";
+import voiceController from "./controller/voice.js";
 
 const router = express.Router();
 

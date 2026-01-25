@@ -1,6 +1,6 @@
-import { BadRequestError, NotFoundError, UnauthorizedError } from "../../common/errors";
-import { conversationDML } from "../../dml/conversation";
-import { IEmailConversation, IEmailMessage } from "../../interfaces";
+import { BadRequestError, NotFoundError, UnauthorizedError } from "../../common/errors.js";
+import { conversationDML } from "../../dml/conversation.js";
+import { IEmailConversation, IEmailMessage } from "../../interfaces/index.js";
 import { z } from "zod";
 
 const createConversationSchema = z.object({

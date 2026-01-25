@@ -1,5 +1,5 @@
 import express, { NextFunction, Request, Response } from "express";
-import routes from "./routes";
+import routes from "./routes.js";
 import cors from "cors";
 
 export const expressApp = express();

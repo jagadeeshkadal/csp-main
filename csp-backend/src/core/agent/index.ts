@@ -1,6 +1,6 @@
-import { BadRequestError, NotFoundError } from "../../common/errors";
-import { agentDML } from "../../dml/agent";
-import { IAIAgent } from "../../interfaces";
+import { BadRequestError, NotFoundError } from "../../common/errors.js";
+import { agentDML } from "../../dml/agent.js";
+import { IAIAgent } from "../../interfaces/index.js";
 import { z } from "zod";
 
 const createAgentSchema = z.object({

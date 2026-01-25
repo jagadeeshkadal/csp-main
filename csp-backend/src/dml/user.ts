@@ -1,5 +1,5 @@
-import prisma from "../db/prisma";
-import { IUser } from "../interfaces";
+import prisma from "../db/prisma.js";
+import { IUser } from "../interfaces/index.js";
 
 type UserCreateData = {
   phoneNumber: string;
@@ -50,28 +50,28 @@ const getUserByEmail = async (email: string): Promise<IUser | null> => {
 
 const getUserById = async (id: string): Promise<IUser | null> => {
   console.log(`[getUserById] Looking up user with ID: ${id} (type: ${typeof id})`);
-  
+
   // First try to find user with deletedAt: null
   let user: IUser | null = await prisma.user.findFirst({
     where: { id, deletedAt: null },
   });
-  
+
   // If not found, try without deletedAt filter (for backwards compatibility with users that don't have deletedAt set)
   if (!user) {
     console.log(`[getUserById] User not found with deletedAt: null, trying without filter`);
     const userWithoutFilter = await prisma.user.findFirst({
       where: { id },
     });
-    
+
     // If user exists but has deletedAt set (not null), return null
     if (userWithoutFilter && userWithoutFilter.deletedAt) {
       console.log(`[getUserById] User found but is deleted: ${userWithoutFilter.id}`);
       return null;
     }
-    
+
     user = userWithoutFilter;
   }
-  
+
   console.log(`[getUserById] User lookup result: ${user ? `found user ${user.id}` : 'not found'}`);
   return user;
 };

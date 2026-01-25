@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
-import { BaseError } from "../../common/errors";
-import { verifyToken } from "../../core/auth/hydrator";
-import { conversationDML } from "../../dml/conversation";
-import { voiceDML } from "../../dml/voice";
+import { BaseError } from "../../common/errors.js";
+import { verifyToken } from "../../core/auth/hydrator.js";
+import { conversationDML } from "../../dml/conversation.js";
+import { voiceDML } from "../../dml/voice.js";
 import { processVoiceText, saveVoiceExchange } from "../../core/voice/index.js";
 
 const getUserIdFromRequest = async (req: Request): Promise<string> => {

@@ -1,5 +1,5 @@
-import prisma from "../db/prisma";
-import { IEmailConversation, IEmailMessage } from "../interfaces";
+import prisma from "../db/prisma.js";
+import { IEmailConversation, IEmailMessage } from "../interfaces/index.js";
 
 type ConversationCreateData = {
   userId: string;
@@ -55,7 +55,7 @@ const getConversationById = async (id: string): Promise<IEmailConversation | nul
       },
     });
     console.log(`[getConversationById] Query result:`, conversation ? `Found conversation with userId=${conversation.userId}` : 'null');
-    
+
     // Also try without deletedAt filter to see if conversation exists at all
     if (!conversation) {
       const anyConversation = await prisma.emailConversation.findFirst({
@@ -63,7 +63,7 @@ const getConversationById = async (id: string): Promise<IEmailConversation | nul
       });
       console.log(`[getConversationById] Conversation exists without deletedAt filter:`, anyConversation ? `deletedAt=${anyConversation.deletedAt}` : 'null');
     }
-    
+
     return conversation as any;
   } catch (error) {
     console.error(`[getConversationById] Error querying conversation:`, error);
@@ -123,13 +123,13 @@ const createMessage = async (message: MessageCreateData): Promise<IEmailMessage>
       isRead: message.isRead ?? false, // Explicitly set isRead
     },
   });
-  
+
   // Update conversation's updatedAt timestamp
   await prisma.emailConversation.update({
     where: { id: message.conversationId },
     data: { updatedAt: new Date() },
   });
-  
+
   return newMessage as IEmailMessage;
 };
 

@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { conversationCore } from "../../core/conversation/index.js";
-import { BaseError } from "../../common/errors";
-import { verifyToken } from "../../core/auth/hydrator";
+import { BaseError } from "../../common/errors.js";
+import { verifyToken } from "../../core/auth/hydrator.js";
 
 const getUserIdFromRequest = async (req: Request): Promise<string> => {
   const token = req.headers.authorization?.split(" ")[1];

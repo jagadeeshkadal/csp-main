@@ -1,7 +1,7 @@
-import { BadRequestError, UnauthorizedError } from "../../common/errors";
-import { userDML } from "../../dml/user";
-import { IUser } from "../../interfaces";
-import { createToken, verifyToken } from "./hydrator";
+import { BadRequestError, UnauthorizedError } from "../../common/errors.js";
+import { userDML } from "../../dml/user.js";
+import { IUser } from "../../interfaces/index.js";
+import { createToken, verifyToken } from "./hydrator.js";
 import { z } from "zod";
 import { Request, Response } from "express";
 import firebaseAdmin from "../../config/firebase";

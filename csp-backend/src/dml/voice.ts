@@ -1,5 +1,5 @@
-import prisma from "../db/prisma";
-import { IVoiceExchange } from "../interfaces";
+import prisma from "../db/prisma.js";
+import { IVoiceExchange } from "../interfaces/index.js";
 
 type VoiceExchangeCreateData = {
   conversationId: string;

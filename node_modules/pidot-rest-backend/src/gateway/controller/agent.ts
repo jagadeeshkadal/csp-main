@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { agentCore } from "../../core/agent/index.js";
-import { BaseError } from "../../common/errors";
+import { BaseError } from "../../common/errors.js";
 
 const getAllAgents = async (req: Request, res: Response) => {
   try {
