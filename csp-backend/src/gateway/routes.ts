@@ -18,32 +18,6 @@ router.get("/test", (req: Request, res: Response) => {
   res.json({ status: "ok", message: "API is reachable!", timestamp: new Date() });
 });
 
-// Debug route to test Gemini API directly
-router.get("/test/gemini", async (req: Request, res: Response) => {
-  console.log("Gemini Health check hit!");
-  const key = (process.env.GEMINI_API_KEY || "").trim().replace(/^["']|["']$/g, '');
-  const modelToTest = "gemini-2.0-flash";
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelToTest}:generateContent?key=${key}`;
-
-  try {
-    const pingResponse = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [{ parts: [{ text: "ping" }] }] })
-    });
-    const pingData = await pingResponse.json();
-
-    res.json({
-      status: pingResponse.ok ? "ok" : "fail",
-      model: modelToTest,
-      response: pingResponse.ok ? (pingData.candidates?.[0]?.content?.parts?.[0]?.text || "success") : "error",
-      error: pingResponse.ok ? null : pingData
-    });
-  } catch (globalError: any) {
-    res.status(500).json({ status: "error", message: globalError.message });
-  }
-});
-
 // Auth routes
 router.post("/sso-signup", authController.ssoSignup);
 router.post("/sign-in", authController.signIn);
