@@ -3,7 +3,7 @@ import { BaseError } from "../../common/errors";
 import { verifyToken } from "../../core/auth/hydrator";
 import { conversationDML } from "../../dml/conversation";
 import { voiceDML } from "../../dml/voice";
-import { processVoiceText, saveVoiceExchange } from "../../core/voice";
+import { processVoiceText, saveVoiceExchange } from "../../core/voice/index.js";
 
 const getUserIdFromRequest = async (req: Request): Promise<string> => {
   const token = req.headers.authorization?.split(" ")[1];

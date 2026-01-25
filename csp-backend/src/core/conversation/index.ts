@@ -154,7 +154,7 @@ export const sendMessage = async (params: {
       console.log(`[Conversation] 📨 Retrieved ${allMessages.length} messages from conversation`);
 
       // Generate agent response using Gemini
-      const { processUserMessage } = await import("../gemini");
+      const { processUserMessage } = await import("../gemini/index.js");
       const agentResponse = await processUserMessage(
         params.content,
         allMessages,

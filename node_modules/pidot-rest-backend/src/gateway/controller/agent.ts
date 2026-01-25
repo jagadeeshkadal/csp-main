@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { agentCore } from "../../core/agent";
+import { agentCore } from "../../core/agent/index.js";
 import { BaseError } from "../../common/errors";
 
 const getAllAgents = async (req: Request, res: Response) => {

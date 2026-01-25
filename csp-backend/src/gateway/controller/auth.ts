@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { userCore } from "../../core/auth";
+import { userCore } from "../../core/auth/index.js";
 import { BaseError } from "../../common/errors";
 
 const ssoSignup = async (req: Request, res: Response) => {

@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { conversationCore } from "../../core/conversation";
+import { conversationCore } from "../../core/conversation/index.js";
 import { BaseError } from "../../common/errors";
 import { verifyToken } from "../../core/auth/hydrator";
 
