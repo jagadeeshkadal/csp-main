@@ -10,7 +10,7 @@ if (!apiKey) {
 }
 
 const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
-const MODEL_NAME = process.env.GEMINI_MODEL || "gemini-1.5-flash";
+const MODEL_NAME = (process.env.GEMINI_MODEL || "gemini-2.0-flash").trim().replace(/^["']|["']$/g, '');
 
 /**
  * Process text message with Gemini and generate voice response

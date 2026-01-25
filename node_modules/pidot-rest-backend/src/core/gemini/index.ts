@@ -10,8 +10,8 @@ const getSafeEnv = (name: string, fallback: string = "") => {
   return (process.env[name] || fallback).trim().replace(/^["']|["']$/g, '');
 };
 
-// Model name - gemini-1.5-flash is robust and fast.
-const MODEL_NAME = getSafeEnv("GEMINI_MODEL", "gemini-1.5-flash");
+// Model name - confirmed available in your project via health check.
+const MODEL_NAME = getSafeEnv("GEMINI_MODEL", "gemini-2.0-flash");
 
 /**
  * Function to get active model and SDK instance

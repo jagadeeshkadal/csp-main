@@ -20,36 +20,24 @@ router.get("/test", (req: Request, res: Response) => {
 
 // Debug route to test Gemini API directly
 router.get("/test/gemini", async (req: Request, res: Response) => {
-  console.log("Gemini Health check hit (RAW FETCH)!");
+  console.log("Gemini Health check hit!");
   const key = (process.env.GEMINI_API_KEY || "").trim().replace(/^["']|["']$/g, '');
-  const modelToTest = "gemini-1.5-flash";
+  const modelToTest = "gemini-2.0-flash";
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelToTest}:generateContent?key=${key}`;
 
   try {
-    // 1. Try a raw fetch to see exactly what Google returns
     const pingResponse = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ contents: [{ parts: [{ text: "ping" }] }] })
     });
-
     const pingData = await pingResponse.json();
-
-    // 2. Try to list models raw
-    const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${key}`;
-    const listResponse = await fetch(listUrl);
-    const listData = await listResponse.json();
 
     res.json({
       status: pingResponse.ok ? "ok" : "fail",
-      pingResult: {
-        ok: pingResponse.ok,
-        status: pingResponse.status,
-        data: pingData
-      },
-      availableModels: listData.models ? listData.models.map((m: any) => m.name) : "could_not_list",
-      listRaw: listData,
-      maskedKey: key ? `${key.substring(0, 4)}...${key.substring(key.length - 4)}` : "missing"
+      model: modelToTest,
+      response: pingResponse.ok ? (pingData.candidates?.[0]?.content?.parts?.[0]?.text || "success") : "error",
+      error: pingResponse.ok ? null : pingData
     });
   } catch (globalError: any) {
     res.status(500).json({ status: "error", message: globalError.message });
