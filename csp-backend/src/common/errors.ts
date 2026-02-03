@@ -4,7 +4,7 @@ export interface ErrorResponse {
   detail?: string;
   code?: string;
 }
-
+// Base error class
 export class BaseError extends Error {
   status: number;
   title: string;
