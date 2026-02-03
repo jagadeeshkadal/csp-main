@@ -8,10 +8,10 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 import express from "express";
-import authController from "./controller/auth";
-import agentController from "./controller/agent";
-import conversationController from "./controller/conversation";
-import voiceController from "./controller/voice";
+import authController from "./controller/auth.js";
+import agentController from "./controller/agent.js";
+import conversationController from "./controller/conversation.js";
+import voiceController from "./controller/voice.js";
 const router = express.Router();
 // Debug: Log that routes file is loading
 console.log("🔵 Routes file loading...");
@@ -32,6 +32,8 @@ router.get("/getUserData", (req, res) => {
     console.log("Auth header:", req.headers.authorization);
     return authController.getCurrentUser(req, res);
 });
+// Update user profile route
+router.put("/users/profile", authController.updateUser);
 // Agent routes - must be before catch-all
 router.get("/agents", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     console.log("✅ GET /agents route handler called!");

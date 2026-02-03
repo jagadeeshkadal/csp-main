@@ -7,11 +7,11 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { BadRequestError, UnauthorizedError } from "../../common/errors";
-import { userDML } from "../../dml/user";
-import { createToken, verifyToken } from "./hydrator";
+import { BadRequestError, UnauthorizedError } from "../../common/errors.js";
+import { userDML } from "../../dml/user.js";
+import { createToken, verifyToken } from "./hydrator.js";
 import { z } from "zod";
-import firebaseAdmin from "../../config/firebase";
+import firebaseAdmin from "../../config/firebase.js";
 export const checkAuth = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     try {
@@ -201,8 +201,18 @@ export const getCurrentUser = (token) => __awaiter(void 0, void 0, void 0, funct
         throw new UnauthorizedError("Invalid token");
     }
 });
+export const updateUser = (token, data) => __awaiter(void 0, void 0, void 0, function* () {
+    const decoded = yield verifyToken(token);
+    const userId = decoded.userId;
+    if (!userId) {
+        throw new UnauthorizedError("Invalid token");
+    }
+    const updatedUser = yield userDML.updateUser(String(userId), data);
+    return { user: updatedUser };
+});
 export const userCore = {
     ssoSignup,
     signIn,
     getCurrentUser,
+    updateUser,
 };

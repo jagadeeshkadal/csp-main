@@ -7,8 +7,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { userCore } from "../../core/auth";
-import { BaseError } from "../../common/errors";
+import { userCore } from "../../core/auth/index.js";
+import { BaseError } from "../../common/errors.js";
 const ssoSignup = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { token, phoneNumber } = req.body;
@@ -70,4 +70,24 @@ const getCurrentUser = (req, res) => __awaiter(void 0, void 0, void 0, function*
         }
     }
 });
-export default { ssoSignup, signIn, getCurrentUser };
+const updateUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    try {
+        const token = (_a = req.headers.authorization) === null || _a === void 0 ? void 0 : _a.split(" ")[1];
+        if (!token) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
+        const result = yield userCore.updateUser(token, req.body);
+        res.status(200).json(result);
+    }
+    catch (e) {
+        console.error("Error in auth controller:", e);
+        if (e instanceof BaseError) {
+            res.status(e.status).json({ message: e.message });
+        }
+        else {
+            res.status(500).json({ message: "Internal server error" });
+        }
+    }
+});
+export default { ssoSignup, signIn, getCurrentUser, updateUser };

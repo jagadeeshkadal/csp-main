@@ -3,17 +3,19 @@ import { conversationAPI } from '@/lib/api';
 import type { EmailMessage, EmailConversation as EmailConv, AIAgent } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, Mail, Bot, User, Clock, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import { Send, Mail, Bot, User, Clock, ChevronDown, ChevronUp, Loader2, Mic, Download } from 'lucide-react';
 import { getUserData } from '@/lib/storage';
 import { Textarea } from '@/components/ui/textarea';
+import { HistoryDownloadModal } from '../agents/HistoryDownloadModal';
 
 interface EmailConversationProps {
   agent: AIAgent | null;
   conversationId: string | null;
   onUnreadChange?: () => void;
+  onVoiceClick?: () => void;
 }
 
-export function EmailConversation({ agent, conversationId, onUnreadChange }: EmailConversationProps) {
+export function EmailConversation({ agent, conversationId, onUnreadChange, onVoiceClick }: EmailConversationProps) {
   const [messages, setMessages] = useState<EmailMessage[]>([]);
   const [conversation, setConversation] = useState<EmailConv | null>(null);
   const [messageContent, setMessageContent] = useState('');
@@ -25,6 +27,8 @@ export function EmailConversation({ agent, conversationId, onUnreadChange }: Ema
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const refreshIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const userData = getUserData();
+  const [expandedDetails, setExpandedDetails] = useState<Set<string>>(new Set());
+  const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
 
   useEffect(() => {
     if (conversationId) {
@@ -215,6 +219,18 @@ export function EmailConversation({ agent, conversationId, onUnreadChange }: Ema
     });
   };
 
+  const toggleDetails = (messageId: string) => {
+    setExpandedDetails((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(messageId)) {
+        newSet.delete(messageId);
+      } else {
+        newSet.add(messageId);
+      }
+      return newSet;
+    });
+  };
+
   const getMessagePreview = (content: string, maxLength: number = 100) => {
     if (content.length <= maxLength) return content;
     return content.substring(0, maxLength) + '...';
@@ -254,41 +270,54 @@ export function EmailConversation({ agent, conversationId, onUnreadChange }: Ema
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-background border-l">
-      {/* Email Thread Header */}
-      <div className="border-b bg-card p-4">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
-              <Mail className="h-5 w-5 text-muted-foreground" />
-              <h2 className="text-lg font-semibold">
-                {conversation?.subject || `Email Thread with ${agent.name}`}
-              </h2>
-            </div>
-            <div className="text-sm text-muted-foreground space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="font-medium">To:</span>
-                <span>{agent.name} &lt;{agent.name.toLowerCase().replace(/\s+/g, '.')}@ai-assistant.com&gt;</span>
+    <div className="flex-1 flex flex-col bg-background">
+      {/* Simple Header - Agent Name Only (Gmail Style) */}
+      <div className="border-b bg-card p-3 md:p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            {/* Agent Avatar */}
+            {agent.avatar ? (
+              <img
+                src={agent.avatar}
+                alt={agent.name}
+                className="w-10 h-10 rounded-full flex-shrink-0"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <Bot className="h-5 w-5 text-primary" />
               </div>
-              {userData && (
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">From:</span>
-                  <span>
-                    {userData.name || 'You'} &lt;{userData.email || 'user@example.com'}&gt;
-                  </span>
-                </div>
-              )}
+            )}
+            {/* Agent Name */}
+            <div className="flex-1 min-w-0">
+              <h2 className="text-base md:text-lg font-semibold truncate">{agent.name}</h2>
             </div>
           </div>
-          {agent.avatar && (
-            <img src={agent.avatar} alt={agent.name} className="w-10 h-10 rounded-full" />
-          )}
+
+          <div className="flex items-center gap-2">
+            {/* Download Button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsDownloadModalOpen(true)}
+              title="Download chat history"
+              className="h-9 w-9 text-muted-foreground hover:text-foreground"
+            >
+              <Download className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
       </div>
 
+      {/* Download Modal */}
+      <HistoryDownloadModal
+        isOpen={isDownloadModalOpen}
+        onClose={() => setIsDownloadModalOpen(false)}
+        agent={agent}
+      />
+
       {/* Email Thread Messages */}
       <ScrollArea className="flex-1">
-        <div className="py-4">
+        <div className="py-4 px-3 md:px-4">
           {loading ? (
             <div className="text-center text-muted-foreground py-8">Loading email thread...</div>
           ) : messages.length === 0 ? (
@@ -312,10 +341,10 @@ export function EmailConversation({ agent, conversationId, onUnreadChange }: Ema
                     }}
                   >
                     <div
-                      className="relative px-8 py-5 hover:bg-muted/30 transition-colors cursor-pointer"
+                      className="relative px-3 py-4 md:px-8 md:py-5 hover:bg-muted/30 transition-colors cursor-pointer"
                       onClick={() => toggleMessage(message.id)}
                     >
-                      <div className="flex items-start gap-5">
+                      <div className="flex items-start gap-3 md:gap-5">
                         {/* Avatar */}
                         <div className="flex-shrink-0">
                           {message.senderType === 'agent' ? (
@@ -323,16 +352,16 @@ export function EmailConversation({ agent, conversationId, onUnreadChange }: Ema
                               <img
                                 src={agent.avatar}
                                 alt={agent.name}
-                                className="w-12 h-12 rounded-full border-2 border-background"
+                                className="w-8 h-8 md:w-12 md:h-12 rounded-full border-2 border-background"
                               />
                             ) : (
-                              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center border-2 border-background">
-                                <Bot className="h-6 w-6 text-primary" />
+                              <div className="w-8 h-8 md:w-12 md:h-12 rounded-full bg-primary/10 flex items-center justify-center border-2 border-background">
+                                <Bot className="h-4 w-4 md:h-6 md:w-6 text-primary" />
                               </div>
                             )
                           ) : (
-                            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center border-2 border-background">
-                              <User className="h-6 w-6 text-primary" />
+                            <div className="w-8 h-8 md:w-12 md:h-12 rounded-full bg-primary/10 flex items-center justify-center border-2 border-background">
+                              <User className="h-4 w-4 md:h-6 md:w-6 text-primary" />
                             </div>
                           )}
                         </div>
@@ -341,49 +370,65 @@ export function EmailConversation({ agent, conversationId, onUnreadChange }: Ema
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-4">
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-3 mb-2">
+                              {/* Sender Name and Email */}
+                              <div className="mb-1">
                                 <span className="font-semibold text-sm">
                                   {message.senderType === 'agent' ? agent.name : (userData?.name || 'You')}
                                 </span>
-                                <span className="text-xs text-muted-foreground">
-                                  {message.senderType === 'agent'
+                                <span className="text-xs text-muted-foreground ml-2">
+                                  &lt;{message.senderType === 'agent'
                                     ? `${agent.name.toLowerCase().replace(/\s+/g, '.')}@ai-assistant.com`
-                                    : (userData?.email || 'user@example.com')
-                                  }
-                                </span>
-                                <span className="text-xs text-muted-foreground">•</span>
-                                <span className="text-xs text-muted-foreground">
-                                  {formatEmailDate(message.createdAt)}
+                                    : (userData?.email || 'user@example.com')}
+                                  &gt;
                                 </span>
                               </div>
 
-                              {isExpanded ? (
-                                <div className="mt-3">
-                                  <div className="text-xs text-muted-foreground mb-3">
-                                    To: {message.senderType === 'agent'
-                                      ? (userData?.email || 'user@example.com')
-                                      : `${agent.name.toLowerCase().replace(/\s+/g, '.')}@ai-assistant.com`
-                                    }
+                              {/* Recipient with Dropdown */}
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="text-xs text-muted-foreground">
+                                  to: {message.senderType === 'agent' ? 'me' : agent.name}
+                                </span>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleDetails(message.id);
+                                  }}
+                                  className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-full hover:bg-muted"
+                                >
+                                  {expandedDetails.has(message.id) ? (
+                                    <ChevronUp className="h-3 w-3" />
+                                  ) : (
+                                    <ChevronDown className="h-3 w-3" />
+                                  )}
+                                </button>
+                              </div>
+
+                              {/* Expandable Details */}
+                              {expandedDetails.has(message.id) && (
+                                <div className="text-xs text-muted-foreground space-y-1 mb-3 p-2 bg-muted/30 rounded border border-border/50">
+                                  <div>From: {message.senderType === 'agent'
+                                    ? `${agent.name.toLowerCase().replace(/\s+/g, '.')}@ai-assistant.com`
+                                    : (userData?.email || 'user@example.com')}
                                   </div>
-                                  <div className="text-sm whitespace-pre-wrap leading-relaxed">
-                                    {message.content}
+                                  <div>To: {message.senderType === 'agent'
+                                    ? (userData?.email || 'user@example.com')
+                                    : `${agent.name.toLowerCase().replace(/\s+/g, '.')}@ai-assistant.com`}
                                   </div>
-                                </div>
-                              ) : (
-                                <div className="text-sm text-muted-foreground mt-2 line-clamp-2">
-                                  {getMessagePreview(message.content)}
+                                  <div>Date: {formatEmailDate(message.createdAt)}</div>
                                 </div>
                               )}
+
+                              {/* Message Content */}
+                              <div className="text-sm whitespace-pre-wrap leading-relaxed mt-2">
+                                {isExpanded ? message.content : (
+                                  <div className="line-clamp-2 text-muted-foreground">
+                                    {getMessagePreview(message.content)}
+                                  </div>
+                                )}
+                              </div>
                             </div>
 
-                            {/* Expand/Collapse Icon */}
-                            <div className="flex-shrink-0 mt-1">
-                              {isExpanded ? (
-                                <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                              ) : (
-                                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                              )}
-                            </div>
+
                           </div>
                         </div>
                       </div>
@@ -411,12 +456,8 @@ export function EmailConversation({ agent, conversationId, onUnreadChange }: Ema
       </ScrollArea>
 
       {/* Email Composition Area */}
-      <div className="border-t bg-card p-4">
+      <div className="border-t bg-card p-3 md:p-4">
         <div className="space-y-3">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span className="font-medium">To:</span>
-            <span>{agent.name} &lt;{agent.name.toLowerCase().replace(/\s+/g, '.')}@ai-assistant.com&gt;</span>
-          </div>
           <Textarea
             placeholder="Type your email message here..."
             value={messageContent}
@@ -430,18 +471,31 @@ export function EmailConversation({ agent, conversationId, onUnreadChange }: Ema
               }
             }}
           />
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <p className="text-xs text-muted-foreground">
               Press Ctrl+Enter to send
             </p>
-            <Button
-              onClick={handleSendMessage}
-              disabled={!messageContent.trim() || sending || !conversationId}
-              size="sm"
-            >
-              <Send className="h-4 w-4 mr-2" />
-              Send
-            </Button>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {/* Voice Button (Mobile Only) */}
+              {onVoiceClick && (
+                <Button
+                  onClick={onVoiceClick}
+                  variant="outline"
+                  size="sm"
+                  className="md:hidden"
+                >
+                  <Mic className="h-4 w-4" />
+                </Button>
+              )}
+              <Button
+                onClick={handleSendMessage}
+                disabled={!messageContent.trim() || sending || !conversationId}
+                size="sm"
+              >
+                <Send className="h-4 w-4 mr-2" />
+                Send
+              </Button>
+            </div>
           </div>
         </div>
       </div>

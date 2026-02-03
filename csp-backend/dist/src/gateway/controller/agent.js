@@ -7,8 +7,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { agentCore } from "../../core/agent";
-import { BaseError } from "../../common/errors";
+import { agentCore } from "../../core/agent/index.js";
+import { BaseError } from "../../common/errors.js";
 const getAllAgents = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const agents = yield agentCore.getAllAgents();

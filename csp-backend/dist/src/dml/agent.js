@@ -7,7 +7,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import prisma from "../db/prisma";
+import prisma from "../db/prisma.js";
 const createAgent = (agent) => __awaiter(void 0, void 0, void 0, function* () {
     const newAgent = yield prisma.aIAgent.create({
         data: Object.assign(Object.assign({}, agent), { deletedAt: null }),

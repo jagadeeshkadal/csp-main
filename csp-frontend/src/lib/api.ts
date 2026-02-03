@@ -142,11 +142,16 @@ export const authAPI = {
   },
 
   updateUser: async (data: any): Promise<AuthResponse> => {
-    // TODO: Implement backend route
-    console.warn('updateUser not fully implemented on backend');
     const response = await api.put<AuthResponse>('/users/profile', data);
+    if (response.data.user) {
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        storeUserData(response.data.user, token);
+      }
+    }
     return response.data;
   },
+
 };
 
 export const agentAPI = {

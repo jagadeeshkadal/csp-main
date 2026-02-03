@@ -4,7 +4,7 @@ import { IUser } from "../../interfaces/index.js";
 import { createToken, verifyToken } from "./hydrator.js";
 import { z } from "zod";
 import { Request, Response } from "express";
-import firebaseAdmin from "../../config/firebase";
+import firebaseAdmin from "../../config/firebase.js";
 interface AuthenticatedRequest extends Request {
   user?: any;
 }
@@ -236,8 +236,21 @@ export const getCurrentUser = async (token: string) => {
   }
 };
 
+export const updateUser = async (token: string, data: any) => {
+  const decoded = await verifyToken(token);
+  const userId = (decoded as any).userId;
+  if (!userId) {
+    throw new UnauthorizedError("Invalid token");
+  }
+
+  const updatedUser = await userDML.updateUser(String(userId), data);
+  return { user: updatedUser };
+};
+
 export const userCore = {
   ssoSignup,
   signIn,
   getCurrentUser,
+  updateUser,
 };
+

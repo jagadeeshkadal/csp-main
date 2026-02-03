@@ -4,7 +4,9 @@ export interface IUser {
   phoneExtension: string;
   name?: string | null;
   email?: string | null;
+  avatar?: string | null;
   jwt?: string | null;
+
   createdAt?: Date;
   updatedAt?: Date;
   deletedAt?: Date | null;

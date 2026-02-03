@@ -7,9 +7,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { conversationCore } from "../../core/conversation";
-import { BaseError } from "../../common/errors";
-import { verifyToken } from "../../core/auth/hydrator";
+import { conversationCore } from "../../core/conversation/index.js";
+import { BaseError } from "../../common/errors.js";
+import { verifyToken } from "../../core/auth/hydrator.js";
 const getUserIdFromRequest = (req) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     const token = (_a = req.headers.authorization) === null || _a === void 0 ? void 0 : _a.split(" ")[1];

@@ -7,8 +7,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { BadRequestError, NotFoundError } from "../../common/errors";
-import { agentDML } from "../../dml/agent";
+import { BadRequestError, NotFoundError } from "../../common/errors.js";
+import { agentDML } from "../../dml/agent.js";
 import { z } from "zod";
 const createAgentSchema = z.object({
     name: z.string().min(1, "Agent name is required"),

@@ -7,8 +7,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { BadRequestError, NotFoundError, UnauthorizedError } from "../../common/errors";
-import { conversationDML } from "../../dml/conversation";
+import { BadRequestError, NotFoundError, UnauthorizedError } from "../../common/errors.js";
+import { conversationDML } from "../../dml/conversation.js";
 import { z } from "zod";
 const createConversationSchema = z.object({
     userId: z.string().min(1, "User ID is required"),
@@ -112,7 +112,7 @@ export const sendMessage = (params) => __awaiter(void 0, void 0, void 0, functio
             const allMessages = yield conversationDML.getMessagesByConversationId(params.conversationId);
             console.log(`[Conversation] 📨 Retrieved ${allMessages.length} messages from conversation`);
             // Generate agent response using Gemini
-            const { processUserMessage } = yield import("../gemini");
+            const { processUserMessage } = yield import("../gemini/index.js");
             const agentResponse = yield processUserMessage(params.content, allMessages, conversation.agent);
             console.log(`[Conversation] 💾 Saving agent response to database...`);
             // Save agent's response
@@ -133,7 +133,7 @@ export const sendMessage = (params) => __awaiter(void 0, void 0, void 0, functio
                 yield conversationDML.createMessage({
                     conversationId: params.conversationId,
                     senderType: "agent",
-                    content: "I apologize, but I'm having trouble processing your message right now. Please try again.",
+                    content: `I apologize, but I'm having trouble processing your message right now. (Error: ${error instanceof Error ? error.message : String(error)}). Please try again.`,
                     isRead: false,
                 });
                 console.log("[Conversation] ✅ Fallback message saved");

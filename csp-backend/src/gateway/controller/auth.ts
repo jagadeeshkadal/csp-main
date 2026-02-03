@@ -62,4 +62,24 @@ const getCurrentUser = async (req: Request, res: Response) => {
     }
 };
 
-export default { ssoSignup, signIn, getCurrentUser };
+const updateUser = async (req: Request, res: Response) => {
+    try {
+        const token = req.headers.authorization?.split(" ")[1];
+        if (!token) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
+
+        const result = await userCore.updateUser(token, req.body);
+        res.status(200).json(result);
+    } catch (e) {
+        console.error("Error in auth controller:", e);
+        if (e instanceof BaseError) {
+            res.status(e.status).json({ message: e.message });
+        } else {
+            res.status(500).json({ message: "Internal server error" });
+        }
+    }
+};
+
+export default { ssoSignup, signIn, getCurrentUser, updateUser };
+

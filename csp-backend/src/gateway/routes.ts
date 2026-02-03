@@ -29,6 +29,10 @@ router.get("/getUserData", (req: Request, res: Response) => {
   return authController.getCurrentUser(req, res);
 });
 
+// Update user profile route
+router.put("/users/profile", authController.updateUser);
+
+
 // Agent routes - must be before catch-all
 router.get("/agents", async (req: Request, res: Response) => {
   console.log("✅ GET /agents route handler called!");
@@ -99,8 +103,5 @@ router.all("*", (req: Request, res: Response) => {
   console.log(`404 - Route not found: ${req.method} ${req.originalUrl}`);
   res.status(404).json({ message: `Route not found: ${req.method} ${req.originalUrl}` });
 });
-
-
-
 
 export default router;

@@ -2,12 +2,14 @@ import { useState, useRef, useEffect } from 'react';
 import { voiceAPI } from '@/lib/api';
 import type { AIAgent } from '@/lib/api';
 import { Button } from '@/components/ui/button';
-import { Mic, MicOff, Loader2, Phone, PhoneOff, Pause } from 'lucide-react';
+import { Mic, MicOff, Loader2, Phone, PhoneOff, Pause, X } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface VoiceSidebarProps {
   agent: AIAgent | null;
   conversationId: string | null;
   onClose?: () => void;
+  className?: string;
 }
 
 // Extend Window interface for Web Speech API
@@ -18,7 +20,7 @@ declare global {
   }
 }
 
-export function VoiceSidebar({ agent, conversationId }: VoiceSidebarProps) {
+export function VoiceSidebar({ agent, conversationId, onClose, className }: VoiceSidebarProps) {
   const [isCallActive, setIsCallActive] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isHoldActive, setIsHoldActive] = useState(false);
@@ -49,15 +51,15 @@ export function VoiceSidebar({ agent, conversationId }: VoiceSidebarProps) {
       console.log('[VoiceSidebar] 🎵 Audio URL changed, loading and playing:', currentAudio);
       console.log('[VoiceSidebar] Current interim transcript:', interimTranscriptRef.current);
       const audio = audioRef.current;
-      
+
       // Stop any currently playing audio and reset
       audio.pause();
       audio.currentTime = 0;
-      
+
       // Load the audio - this will reset the readyState
       audio.load();
       console.log('[VoiceSidebar] 📥 Audio load() called, readyState:', audio.readyState);
-      
+
       // Function to attempt playing
       const playAudio = () => {
         // Don't play if user is speaking
@@ -65,7 +67,7 @@ export function VoiceSidebar({ agent, conversationId }: VoiceSidebarProps) {
           console.log('[VoiceSidebar] ⚠️ User speaking, not playing audio');
           return;
         }
-        
+
         console.log('[VoiceSidebar] 🎵 Attempting to play audio...');
         console.log('[VoiceSidebar] Audio state - readyState:', audio.readyState, 'paused:', audio.paused, 'src:', audio.src);
         setIsPlayingAudio(true);
@@ -91,7 +93,7 @@ export function VoiceSidebar({ agent, conversationId }: VoiceSidebarProps) {
           audio.addEventListener('canplay', handleCanPlay);
         });
       };
-      
+
       // Try to play immediately if ready
       if (audio.readyState >= 3) {
         console.log('[VoiceSidebar] ⚡ Audio already ready, playing immediately');
@@ -105,7 +107,7 @@ export function VoiceSidebar({ agent, conversationId }: VoiceSidebarProps) {
           audio.removeEventListener('canplay', handleCanPlay);
         };
         audio.addEventListener('canplay', handleCanPlay);
-        
+
         // Also try after short delays in case event doesn't fire or audio loads quickly
         setTimeout(() => {
           if (audio.readyState >= 3 && audio.paused && !interimTranscriptRef.current.trim()) {
@@ -113,7 +115,7 @@ export function VoiceSidebar({ agent, conversationId }: VoiceSidebarProps) {
             playAudio();
           }
         }, 100);
-        
+
         setTimeout(() => {
           if (audio.readyState >= 3 && audio.paused && !interimTranscriptRef.current.trim()) {
             console.log('[VoiceSidebar] ⚡ Audio ready after 500ms, playing');
@@ -138,20 +140,20 @@ export function VoiceSidebar({ agent, conversationId }: VoiceSidebarProps) {
   // Continuously monitor for speech and stop audio immediately when any word is detected
   useEffect(() => {
     const hasWords = interimTranscript.trim().length > 0;
-    
+
     if (hasWords && audioRef.current && isPlayingAudio) {
       const audio = audioRef.current;
       const isCurrentlyPlaying = !audio.paused && !audio.ended && audio.currentTime > 0 && audio.readyState >= 2;
-      
+
       if (isCurrentlyPlaying) {
         console.log('[VoiceSidebar] 🛑 Word detected in useEffect - immediately stopping audio playback');
         console.log('[VoiceSidebar] Audio state - paused:', audio.paused, 'currentTime:', audio.currentTime, 'isPlayingAudio:', isPlayingAudio);
-        
+
         try {
           audio.pause();
           audio.currentTime = 0;
           setIsPlayingAudio(false);
-          
+
           // After interrupting, go back to listening state
           if (isRecordingRef.current) {
             setStatusText('listening');
@@ -245,7 +247,7 @@ export function VoiceSidebar({ agent, conversationId }: VoiceSidebarProps) {
             if (audioRef.current) {
               const audio = audioRef.current;
               const wasPlaying = !audio.paused && audio.currentTime > 0 && !audio.ended;
-              
+
               if (wasPlaying || isPlayingAudio) {
                 console.log('[VoiceSidebar] 🛑 User speaking in onresult - interrupting audio');
                 console.log('[VoiceSidebar] Audio state - paused:', audio.paused, 'currentTime:', audio.currentTime, 'isPlayingAudio:', isPlayingAudio);
@@ -254,7 +256,7 @@ export function VoiceSidebar({ agent, conversationId }: VoiceSidebarProps) {
                   audio.pause();
                   audio.currentTime = 0;
                   setIsPlayingAudio(false);
-                  
+
                   // After interrupting, go back to listening state
                   if (isRecordingRef.current) {
                     setStatusText('listening');
@@ -312,7 +314,11 @@ export function VoiceSidebar({ agent, conversationId }: VoiceSidebarProps) {
           if (event.error === 'no-speech') {
             // No speech detected - check if we should send
             checkNoWordsAndSend();
-          } else if (event.error !== 'aborted' && isRecordingRef.current) {
+          } else if (event.error === 'aborted') {
+            // Do NOT restart on aborted - this causes infinite loops
+            console.log('[VoiceSidebar] 🛑 Recognition aborted - stopping restart loop');
+            return;
+          } else if (isRecordingRef.current) {
             // Restart if still recording (continuous listening)
             setTimeout(() => {
               if (isRecordingRef.current && conversationId && recognitionRef.current) {
@@ -329,7 +335,7 @@ export function VoiceSidebar({ agent, conversationId }: VoiceSidebarProps) {
 
         recognition.onend = () => {
           console.log('[VoiceSidebar] 🛑 Speech recognition ended');
-          // Always restart if still recording (continuous listening)
+          // Only restart if still recording AND no aborted error
           // Use ref to check isRecording to avoid stale closure
           if (isRecordingRef.current && conversationId) {
             setTimeout(() => {
@@ -340,26 +346,20 @@ export function VoiceSidebar({ agent, conversationId }: VoiceSidebarProps) {
                   console.log('[VoiceSidebar] ✅ Speech recognition restarted (continuous listening)');
                 } catch (e) {
                   console.log('[VoiceSidebar] Recognition already started or error:', e);
-                  // Try again after a short delay if it failed
-                  if (isRecordingRef.current) {
-                    setTimeout(() => {
-                      if (isRecordingRef.current && recognitionRef.current) {
-                        try {
-                          recognitionRef.current.start();
-                          console.log('[VoiceSidebar] ✅ Speech recognition restarted (retry)');
-                        } catch (e2) {
-                          console.log('[VoiceSidebar] Second restart attempt failed:', e2);
-                        }
-                      }
-                    }, 500);
-                  }
                 }
               }
-            }, 100);
+            }, 100); // Reduced timeout to 100ms
           }
         };
 
+
         recognitionRef.current = recognition;
+
+        try {
+          recognition.start();
+        } catch (e) {
+          console.error('[VoiceSidebar] Error starting recognition:', e);
+        }
       }
     }
 
@@ -418,7 +418,7 @@ export function VoiceSidebar({ agent, conversationId }: VoiceSidebarProps) {
       hasDetectedWordsRef.current = false;
       finalTranscriptRef.current = '';
       console.log('[VoiceSidebar] 📞 Call started');
-      
+
       // Start audio visualization
       startAudioVisualization();
     } catch (error) {
@@ -437,24 +437,24 @@ export function VoiceSidebar({ agent, conversationId }: VoiceSidebarProps) {
 
   const toggleMute = () => {
     if (!isCallActive) return;
-    
+
     const newMutedState = !isMuted;
     setIsMuted(newMutedState);
-    
+
     // Mute/unmute the microphone track
     if (streamRef.current) {
       streamRef.current.getAudioTracks().forEach(track => {
         track.enabled = !newMutedState;
       });
     }
-    
+
     console.log('[VoiceSidebar] 🎤 Microphone', newMutedState ? 'muted' : 'unmuted');
   };
 
   const handleHold = () => {
     const newHoldState = !isHoldActive;
     setIsHoldActive(newHoldState);
-    
+
     if (newHoldState) {
       // Stop TTS audio abruptly
       if (audioRef.current) {
@@ -464,7 +464,7 @@ export function VoiceSidebar({ agent, conversationId }: VoiceSidebarProps) {
         setIsPlayingAudio(false);
         setCurrentAudio(null);
       }
-      
+
       // Mute the microphone
       if (!isMuted && streamRef.current) {
         setIsMuted(true);
@@ -473,7 +473,7 @@ export function VoiceSidebar({ agent, conversationId }: VoiceSidebarProps) {
         });
         console.log('[VoiceSidebar] 🎤 Hold pressed - muting microphone');
       }
-      
+
       // Clear status
       if (statusText === 'speaking') {
         setStatusText(null);
@@ -497,27 +497,27 @@ export function VoiceSidebar({ agent, conversationId }: VoiceSidebarProps) {
       cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = null;
     }
-    
+
     if (microphoneRef.current) {
       microphoneRef.current.disconnect();
       microphoneRef.current = null;
     }
-    
+
     if (analyserRef.current) {
       analyserRef.current.disconnect();
       analyserRef.current = null;
     }
-    
+
     if (audioContextRef.current) {
       audioContextRef.current.close();
       audioContextRef.current = null;
     }
-    
+
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
     }
-    
+
     setAudioLevel(0);
   };
 
@@ -531,7 +531,7 @@ export function VoiceSidebar({ agent, conversationId }: VoiceSidebarProps) {
       setIsRecording(false);
       isRecordingRef.current = false;
       setStatusText(null);
-      
+
       // Stop any playing audio
       if (audioRef.current && !audioRef.current.paused) {
         console.log('[VoiceSidebar] 🛑 Stopping audio when stopping listening');
@@ -540,21 +540,21 @@ export function VoiceSidebar({ agent, conversationId }: VoiceSidebarProps) {
         setIsPlayingAudio(false);
         setCurrentAudio(null);
       }
-      
+
       // Stop audio visualization
       stopAudioVisualization();
-      
+
       if (noWordsTimeoutRef.current) {
         clearTimeout(noWordsTimeoutRef.current);
         noWordsTimeoutRef.current = null;
       }
       hasDetectedWordsRef.current = false;
-      
+
       // Clear transcripts
       setInterimTranscript('');
       interimTranscriptRef.current = '';
       finalTranscriptRef.current = '';
-      
+
       console.log('[VoiceSidebar] 🛑 Listening stopped and everything cleared');
     }
   };
@@ -590,23 +590,23 @@ export function VoiceSidebar({ agent, conversationId }: VoiceSidebarProps) {
 
       // Start analyzing audio levels
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
-      
+
       const updateAudioLevel = () => {
         if (!analyserRef.current) {
           return;
         }
-        
+
         analyserRef.current.getByteFrequencyData(dataArray);
-        
+
         // Calculate average volume (only if not muted)
         const average = isMuted ? 0 : dataArray.reduce((sum, value) => sum + value, 0) / dataArray.length;
         const normalizedLevel = Math.min(average / 128, 1); // Normalize to 0-1
-        
+
         setAudioLevel(normalizedLevel);
-        
+
         animationFrameRef.current = requestAnimationFrame(updateAudioLevel);
       };
-      
+
       updateAudioLevel();
     } catch (error) {
       console.error('Error starting audio visualization:', error);
@@ -633,18 +633,18 @@ export function VoiceSidebar({ agent, conversationId }: VoiceSidebarProps) {
     setInterimTranscript('');
     interimTranscriptRef.current = ''; // Clear ref
     finalTranscriptRef.current = ''; // Clear for next recording
-    
+
     try {
       console.log('[VoiceSidebar] 📤 Sending transcript to backend:', finalText);
       const response = await voiceAPI.processVoiceText(conversationId, finalText);
-      
+
       console.log('[VoiceSidebar] ✅ Received response:', response);
       setStatusText(null); // Clear status when response received
-      
+
       // Play agent audio response if available
       if (response.exchange.agentAudioUrl) {
         console.log('[VoiceSidebar] 🔊 Audio URL received:', response.exchange.agentAudioUrl);
-        
+
         // Stop any currently playing audio first
         if (audioRef.current && !audioRef.current.paused) {
           console.log('[VoiceSidebar] 🛑 Stopping any existing audio before playing new one');
@@ -652,7 +652,7 @@ export function VoiceSidebar({ agent, conversationId }: VoiceSidebarProps) {
           audioRef.current.currentTime = 0;
           setIsPlayingAudio(false);
         }
-        
+
         // Set the audio source - this will trigger the useEffect to load and play it immediately
         setCurrentAudio(response.exchange.agentAudioUrl);
       } else {
@@ -668,13 +668,13 @@ export function VoiceSidebar({ agent, conversationId }: VoiceSidebarProps) {
   };
 
 
-  const isSpeechSupported = typeof window !== 'undefined' && 
+  const isSpeechSupported = typeof window !== 'undefined' &&
     (window.SpeechRecognition || window.webkitSpeechRecognition);
 
   // Don't render if no agent is selected
   if (!agent) {
     return (
-      <div className="w-96 border-l bg-card flex flex-col h-full">
+      <div className={cn("w-96 border-l bg-card flex flex-col h-full", className)}>
         <div className="flex-1 flex items-center justify-center p-8">
           <div className="text-center text-muted-foreground">
             <Mic className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -686,9 +686,9 @@ export function VoiceSidebar({ agent, conversationId }: VoiceSidebarProps) {
   }
 
   return (
-    <div className="w-96 border-l bg-card flex flex-col h-full">
+    <div className={cn("w-96 border-l bg-card flex flex-col h-full", className)}>
       {/* Header */}
-      <div className="border-b p-4">
+      <div className="border-b p-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           {agent.avatar && (
             <img src={agent.avatar} alt={agent.name} className="w-10 h-10 rounded-full" />
@@ -698,11 +698,16 @@ export function VoiceSidebar({ agent, conversationId }: VoiceSidebarProps) {
             <p className="text-xs text-muted-foreground">{agent.name}</p>
           </div>
         </div>
+        {onClose && (
+          <Button variant="ghost" size="icon" onClick={onClose}>
+            <X className="h-5 w-5" />
+          </Button>
+        )}
       </div>
 
       {/* Audio element for playback */}
-      <audio 
-        ref={audioRef} 
+      <audio
+        ref={audioRef}
         src={currentAudio || undefined}
         preload="auto"
         onLoadedData={() => {
@@ -752,7 +757,7 @@ export function VoiceSidebar({ agent, conversationId }: VoiceSidebarProps) {
               audioRef.current.currentTime = 0;
             }
             setIsPlayingAudio(false);
-            
+
             // After interrupting, go back to listening state
             if (isRecordingRef.current) {
               setStatusText('listening');
@@ -784,7 +789,7 @@ export function VoiceSidebar({ agent, conversationId }: VoiceSidebarProps) {
             audioRef.current.pause();
             audioRef.current.currentTime = 0;
             setIsPlayingAudio(false);
-            
+
             // After interrupting, go back to listening state
             if (isRecordingRef.current) {
               setStatusText('listening');
@@ -808,84 +813,84 @@ export function VoiceSidebar({ agent, conversationId }: VoiceSidebarProps) {
         <div className="relative flex items-center justify-center">
           {(() => {
             // Calculate animation level - use audioLevel when speaking, or pulse when playing/thinking
-            const animationLevel = isRecording && audioLevel > 0 
-              ? audioLevel 
-              : (isPlayingAudio || statusText) 
-                ? pulseLevel 
+            const animationLevel = isRecording && audioLevel > 0
+              ? audioLevel
+              : (isPlayingAudio || statusText)
+                ? pulseLevel
                 : 0;
-            
+
             return (
               <>
                 {/* Outer glow ring */}
-          <div
-            className="absolute rounded-full transition-all duration-100"
-            style={{
-              width: `${180 + animationLevel * 60}px`,
-              height: `${180 + animationLevel * 60}px`,
-              background: `radial-gradient(circle, rgba(59, 130, 246, ${isRecording || isPlayingAudio || statusText ? 0.2 + animationLevel * 0.3 : 0.1}) 0%, rgba(59, 130, 246, ${isRecording || isPlayingAudio || statusText ? 0.05 + animationLevel * 0.1 : 0.03}) 50%, transparent 70%)`,
-              opacity: isRecording || isPlayingAudio || statusText ? 0.6 + animationLevel * 0.4 : 0.3,
-              transform: `scale(${isRecording || isPlayingAudio || statusText ? 1 + animationLevel * 0.2 : 1})`,
-            }}
-          />
-          
-          {/* Middle cloud-like layer */}
-          <div
-            className="absolute rounded-full transition-all duration-100"
-            style={{
-              width: `${160 + animationLevel * 50}px`,
-              height: `${160 + animationLevel * 50}px`,
-              background: `radial-gradient(circle at 30% 30%, rgba(147, 197, 253, ${isRecording || isPlayingAudio || statusText ? 0.4 + animationLevel * 0.3 : 0.2}) 0%, rgba(96, 165, 250, ${isRecording || isPlayingAudio || statusText ? 0.3 + animationLevel * 0.2 : 0.15}) 40%, rgba(59, 130, 246, ${isRecording || isPlayingAudio || statusText ? 0.2 + animationLevel * 0.2 : 0.1}) 70%, rgba(37, 99, 235, ${isRecording || isPlayingAudio || statusText ? 0.1 + animationLevel * 0.1 : 0.05}) 100%)`,
-              opacity: isRecording || isPlayingAudio || statusText ? 0.7 + animationLevel * 0.3 : 0.4,
-              transform: `scale(${isRecording || isPlayingAudio || statusText ? 1 + animationLevel * 0.15 : 1})`,
-              filter: 'blur(8px)',
-            }}
-          />
-          
-          {/* Main circular visualizer */}
-          <div
-            className="relative rounded-full transition-all duration-100 flex items-center justify-center overflow-hidden"
-            style={{
-              width: `${140 + animationLevel * 40}px`,
-              height: `${140 + animationLevel * 40}px`,
-              background: `radial-gradient(circle at 25% 25%, 
+                <div
+                  className="absolute rounded-full transition-all duration-100"
+                  style={{
+                    width: `${180 + animationLevel * 60}px`,
+                    height: `${180 + animationLevel * 60}px`,
+                    background: `radial-gradient(circle, rgba(59, 130, 246, ${isRecording || isPlayingAudio || statusText ? 0.2 + animationLevel * 0.3 : 0.1}) 0%, rgba(59, 130, 246, ${isRecording || isPlayingAudio || statusText ? 0.05 + animationLevel * 0.1 : 0.03}) 50%, transparent 70%)`,
+                    opacity: isRecording || isPlayingAudio || statusText ? 0.6 + animationLevel * 0.4 : 0.3,
+                    transform: `scale(${isRecording || isPlayingAudio || statusText ? 1 + animationLevel * 0.2 : 1})`,
+                  }}
+                />
+
+                {/* Middle cloud-like layer */}
+                <div
+                  className="absolute rounded-full transition-all duration-100"
+                  style={{
+                    width: `${160 + animationLevel * 50}px`,
+                    height: `${160 + animationLevel * 50}px`,
+                    background: `radial-gradient(circle at 30% 30%, rgba(147, 197, 253, ${isRecording || isPlayingAudio || statusText ? 0.4 + animationLevel * 0.3 : 0.2}) 0%, rgba(96, 165, 250, ${isRecording || isPlayingAudio || statusText ? 0.3 + animationLevel * 0.2 : 0.15}) 40%, rgba(59, 130, 246, ${isRecording || isPlayingAudio || statusText ? 0.2 + animationLevel * 0.2 : 0.1}) 70%, rgba(37, 99, 235, ${isRecording || isPlayingAudio || statusText ? 0.1 + animationLevel * 0.1 : 0.05}) 100%)`,
+                    opacity: isRecording || isPlayingAudio || statusText ? 0.7 + animationLevel * 0.3 : 0.4,
+                    transform: `scale(${isRecording || isPlayingAudio || statusText ? 1 + animationLevel * 0.15 : 1})`,
+                    filter: 'blur(8px)',
+                  }}
+                />
+
+                {/* Main circular visualizer */}
+                <div
+                  className="relative rounded-full transition-all duration-100 flex items-center justify-center overflow-hidden"
+                  style={{
+                    width: `${140 + animationLevel * 40}px`,
+                    height: `${140 + animationLevel * 40}px`,
+                    background: `radial-gradient(circle at 25% 25%, 
                 rgba(191, 219, 254, ${isRecording || isPlayingAudio || statusText ? 0.8 + animationLevel * 0.2 : 0.6}) 0%, 
                 rgba(147, 197, 253, ${isRecording || isPlayingAudio || statusText ? 0.6 + animationLevel * 0.2 : 0.4}) 25%,
                 rgba(96, 165, 250, ${isRecording || isPlayingAudio || statusText ? 0.5 + animationLevel * 0.2 : 0.3}) 50%,
                 rgba(59, 130, 246, ${isRecording || isPlayingAudio || statusText ? 0.4 + animationLevel * 0.2 : 0.25}) 75%,
                 rgba(37, 99, 235, ${isRecording || isPlayingAudio || statusText ? 0.3 + animationLevel * 0.1 : 0.2}) 100%)`,
-              boxShadow: `0 0 ${isRecording || isPlayingAudio || statusText ? 30 + animationLevel * 40 : 20}px rgba(59, 130, 246, ${isRecording || isPlayingAudio || statusText ? 0.4 + animationLevel * 0.4 : 0.3}), 
+                    boxShadow: `0 0 ${isRecording || isPlayingAudio || statusText ? 30 + animationLevel * 40 : 20}px rgba(59, 130, 246, ${isRecording || isPlayingAudio || statusText ? 0.4 + animationLevel * 0.4 : 0.3}), 
                           inset 0 0 ${isRecording || isPlayingAudio || statusText ? 20 + animationLevel * 20 : 15}px rgba(191, 219, 254, ${isRecording || isPlayingAudio || statusText ? 0.3 + animationLevel * 0.2 : 0.2})`,
-              transform: `scale(${isRecording || isPlayingAudio || statusText ? 1 + animationLevel * 0.1 : 1})`,
-            }}
-          >
-            {/* Inner highlight */}
-            <div
-              className="absolute top-0 left-0 w-full h-full rounded-full transition-all duration-100"
-              style={{
-                background: `radial-gradient(circle at 30% 30%, rgba(255, 255, 255, ${isRecording || isPlayingAudio || statusText ? 0.3 + animationLevel * 0.2 : 0.2}) 0%, transparent 60%)`,
-              }}
-            />
-          </div>
-          
-          {/* Animated ripples - when recording, playing, or thinking */}
-          {(isRecording || isPlayingAudio || statusText) && [0, 1, 2].map((i) => (
-            <div
-              key={i}
-              className="absolute rounded-full border-2 border-primary/30 dark:border-black/30 transition-all duration-300"
-              style={{
-                width: `${140 + animationLevel * 40 + i * 20}px`,
-                height: `${140 + animationLevel * 40 + i * 20}px`,
-                opacity: (0.3 - i * 0.1) * (1 - animationLevel * 0.5),
-                animation: `pulse ${2 + i * 0.5}s ease-in-out infinite`,
-                animationDelay: `${i * 0.3}s`,
-              }}
-            />
-          ))}
+                    transform: `scale(${isRecording || isPlayingAudio || statusText ? 1 + animationLevel * 0.1 : 1})`,
+                  }}
+                >
+                  {/* Inner highlight */}
+                  <div
+                    className="absolute top-0 left-0 w-full h-full rounded-full transition-all duration-100"
+                    style={{
+                      background: `radial-gradient(circle at 30% 30%, rgba(255, 255, 255, ${isRecording || isPlayingAudio || statusText ? 0.3 + animationLevel * 0.2 : 0.2}) 0%, transparent 60%)`,
+                    }}
+                  />
+                </div>
+
+                {/* Animated ripples - when recording, playing, or thinking */}
+                {(isRecording || isPlayingAudio || statusText) && [0, 1, 2].map((i) => (
+                  <div
+                    key={i}
+                    className="absolute rounded-full border-2 border-primary/30 dark:border-black/30 transition-all duration-300"
+                    style={{
+                      width: `${140 + animationLevel * 40 + i * 20}px`,
+                      height: `${140 + animationLevel * 40 + i * 20}px`,
+                      opacity: (0.3 - i * 0.1) * (1 - animationLevel * 0.5),
+                      animation: `pulse ${2 + i * 0.5}s ease-in-out infinite`,
+                      animationDelay: `${i * 0.3}s`,
+                    }}
+                  />
+                ))}
               </>
             );
           })()}
         </div>
-        
+
         {/* Status Text Indicator - Below the circular visualizer */}
         {statusText && (
           <div className="mt-4 text-center">
@@ -914,7 +919,7 @@ export function VoiceSidebar({ agent, conversationId }: VoiceSidebarProps) {
                 <span>Processing...</span>
               </div>
             )}
-            
+
             {/* Buttons */}
             <div className="flex gap-2">
               {/* Start/End Call Button */}

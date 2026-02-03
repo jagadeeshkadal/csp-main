@@ -1,5 +1,5 @@
 import express from "express";
-import routes from "./routes";
+import routes from "./routes.js";
 import cors from "cors";
 export const expressApp = express();
 // CORS configuration
@@ -13,8 +13,8 @@ const corsOptions = {
     optionsSuccessStatus: 204
 };
 expressApp.use(cors(corsOptions));
-expressApp.use(express.json());
-expressApp.use(express.urlencoded({ extended: true }));
+expressApp.use(express.json({ limit: "50mb" }));
+expressApp.use(express.urlencoded({ extended: true, limit: "50mb" }));
 // Logging middleware (before routes)
 expressApp.use((req, res, next) => {
     console.log(`${req.method} ${req.url}`);
@@ -30,6 +30,7 @@ console.log("  GET  /test");
 console.log("  POST /sso-signup");
 console.log("  POST /sign-in");
 console.log("  GET  /getUserData");
+console.log("  PUT  /users/profile   <-- NEW");
 console.log("  GET  /agents");
 console.log("  GET  /agents/search");
 console.log("  GET  /agents/:id");

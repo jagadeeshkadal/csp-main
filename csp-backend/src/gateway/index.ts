@@ -16,8 +16,8 @@ const corsOptions = {
 };
 
 expressApp.use(cors(corsOptions));
-expressApp.use(express.json());
-expressApp.use(express.urlencoded({ extended: true }));
+expressApp.use(express.json({ limit: "50mb" }));
+expressApp.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 // Logging middleware (before routes)
 expressApp.use((req: Request, res: Response, next: NextFunction) => {
@@ -36,6 +36,7 @@ console.log("  GET  /test");
 console.log("  POST /sso-signup");
 console.log("  POST /sign-in");
 console.log("  GET  /getUserData");
+console.log("  PUT  /users/profile   <-- NEW");
 console.log("  GET  /agents");
 console.log("  GET  /agents/search");
 console.log("  GET  /agents/:id");
@@ -44,7 +45,5 @@ console.log("  GET  /conversations");
 console.log("  GET  /conversations/:id");
 console.log("  POST /conversations/:id/voice");
 console.log("  GET  /conversations/:id/voice");
-
-
 
 export default expressApp;

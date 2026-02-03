@@ -6,8 +6,10 @@ type UserCreateData = {
   phoneExtension?: string;
   name?: string | null;
   email?: string | null;
+  avatar?: string | null;
   jwt?: string | null;
   deletedAt?: Date | null;
+
 };
 
 type UserUpdateData = {
@@ -15,8 +17,10 @@ type UserUpdateData = {
   phoneExtension?: string;
   name?: string | null;
   email?: string | null;
+  avatar?: string | null;
   jwt?: string | null;
   deletedAt?: Date | null;
+
 };
 
 const createUser = async (user: UserCreateData): Promise<IUser> => {

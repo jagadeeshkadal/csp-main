@@ -1,35 +1,40 @@
-import * as firebaseAdmin from "firebase-admin";
+import admin from "firebase-admin";
 import * as path from "path";
 import * as fs from "fs";
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Initialize Firebase Admin if not already initialized
-if (!firebaseAdmin.apps.length) {
+if (!admin.apps.length) {
   const credentialsPath = path.join(__dirname, "../../credentials/firebase-service-account.json");
-  
+
   // Try to load from credentials folder first
   if (fs.existsSync(credentialsPath)) {
     const serviceAccount = JSON.parse(fs.readFileSync(credentialsPath, "utf8"));
-    firebaseAdmin.initializeApp({
-      credential: firebaseAdmin.credential.cert(serviceAccount),
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
     });
     console.log("Firebase Admin initialized from credentials file");
   } else if (process.env.FIREBASE_SERVICE_ACCOUNT) {
     // Fallback to environment variable
     const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-    firebaseAdmin.initializeApp({
-      credential: firebaseAdmin.credential.cert(serviceAccount),
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
     });
     console.log("Firebase Admin initialized from environment variable");
   } else if (process.env.FIREBASE_PROJECT_ID) {
     // Fallback to project ID only
-    firebaseAdmin.initializeApp({
+    admin.initializeApp({
       projectId: process.env.FIREBASE_PROJECT_ID,
     });
     console.log("Firebase Admin initialized with project ID");
   } else {
     // Last resort: try default credentials
     try {
-      firebaseAdmin.initializeApp();
+      admin.initializeApp();
       console.log("Firebase Admin initialized with default credentials");
     } catch (error) {
       console.error("Firebase Admin initialization failed:", error);
@@ -41,4 +46,4 @@ if (!firebaseAdmin.apps.length) {
   }
 }
 
-export default firebaseAdmin;
+export default admin;

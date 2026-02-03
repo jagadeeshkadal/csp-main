@@ -48,7 +48,7 @@ const processVoice = async (req: Request, res: Response) => {
     let agent = conversation.agent;
     if (!agent && conversation.agentId) {
       console.log(`[Voice Controller] ⚠️ Agent not included in conversation, fetching separately...`);
-      const { agentDML } = await import("../../dml/agent");
+      const { agentDML } = await import("../../dml/agent.js");
       const fetchResult = await agentDML.getAgentById(conversation.agentId);
       agent = fetchResult || undefined;
     }

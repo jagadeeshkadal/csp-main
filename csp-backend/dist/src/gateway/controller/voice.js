@@ -7,11 +7,11 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { BaseError } from "../../common/errors";
-import { verifyToken } from "../../core/auth/hydrator";
-import { conversationDML } from "../../dml/conversation";
-import { voiceDML } from "../../dml/voice";
-import { processVoiceText, saveVoiceExchange } from "../../core/voice";
+import { BaseError } from "../../common/errors.js";
+import { verifyToken } from "../../core/auth/hydrator.js";
+import { conversationDML } from "../../dml/conversation.js";
+import { voiceDML } from "../../dml/voice.js";
+import { processVoiceText, saveVoiceExchange } from "../../core/voice/index.js";
 const getUserIdFromRequest = (req) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     const token = (_a = req.headers.authorization) === null || _a === void 0 ? void 0 : _a.split(" ")[1];
@@ -49,7 +49,7 @@ const processVoice = (req, res) => __awaiter(void 0, void 0, void 0, function* (
         let agent = conversation.agent;
         if (!agent && conversation.agentId) {
             console.log(`[Voice Controller] ⚠️ Agent not included in conversation, fetching separately...`);
-            const { agentDML } = yield import("../../dml/agent");
+            const { agentDML } = yield import("../../dml/agent.js");
             const fetchResult = yield agentDML.getAgentById(conversation.agentId);
             agent = fetchResult || undefined;
         }

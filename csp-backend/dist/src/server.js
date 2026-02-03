@@ -7,10 +7,11 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import config from "./config/config";
-import expressApp from "./gateway";
-import "./config/firebase"; // Initialize Firebase Admin
-import prisma from "./db/prisma";
+import "dotenv/config";
+import config from "./config/config.js";
+import expressApp from "./gateway/index.js";
+import "./config/firebase.js"; // Initialize Firebase Admin
+import prisma from "./db/prisma.js";
 const startServer = () => __awaiter(void 0, void 0, void 0, function* () {
     try {
         yield prisma.$connect();

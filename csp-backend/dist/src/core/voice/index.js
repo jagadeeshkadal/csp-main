@@ -9,14 +9,14 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import Replicate from "replicate";
-import { voiceDML } from "../../dml/voice";
-import { conversationDML } from "../../dml/conversation";
+import { voiceDML } from "../../dml/voice.js";
+import { conversationDML } from "../../dml/conversation.js";
 const apiKey = process.env.GEMINI_API_KEY;
 if (!apiKey) {
     console.warn("⚠️  GEMINI_API_KEY not found. Voice features will not work.");
 }
 const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
-const MODEL_NAME = process.env.GEMINI_MODEL || "gemini-2.5-flash-preview-09-2025";
+const MODEL_NAME = (process.env.GEMINI_MODEL || "gemini-2.0-flash").trim().replace(/^["']|["']$/g, '');
 /**
  * Process text message with Gemini and generate voice response
  * Frontend handles speech-to-text, backend only processes text

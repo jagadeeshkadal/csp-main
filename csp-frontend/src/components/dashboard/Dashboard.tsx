@@ -178,22 +178,20 @@ export function Dashboard() {
                 {tasks.map((task, index) => (
                   <div
                     key={task.id}
-                    className={`flex items-center gap-4 p-3 border-l-4 ${
-                      task.severity === 'High' ? 'border-secondary' : 
-                      task.severity === 'Medium' ? 'border-yellow-500' : 
-                      'border-primary dark:border-black'
-                    } ${index !== tasks.length - 1 ? 'border-b' : ''}`}
+                    className={`flex items-center gap-4 p-3 border-l-4 ${task.severity === 'High' ? 'border-secondary' :
+                        task.severity === 'Medium' ? 'border-yellow-500' :
+                          'border-primary dark:border-black'
+                      } ${index !== tasks.length - 1 ? 'border-b' : ''}`}
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{task.task}</p>
                     </div>
                     <div className="flex items-center gap-4 flex-shrink-0">
                       <span
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          task.severity === 'High' ? 'bg-secondary/20 text-secondary' :
-                          task.severity === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
-                          'bg-primary/10 text-primary dark:bg-black/20 dark:text-black'
-                        }`}
+                        className={`px-2 py-1 rounded-full text-xs font-medium ${task.severity === 'High' ? 'bg-secondary/20 text-secondary' :
+                            task.severity === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
+                              'bg-primary/10 text-primary dark:bg-black/20 dark:text-black'
+                          }`}
                       >
                         {task.severity}
                       </span>

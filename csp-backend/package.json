@@ -1,6 +1,7 @@
 {
   "name": "pidot-rest-backend",
   "version": "1.0.0",
+  "type": "module",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -32,6 +33,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
     "express": "^4.21.2",
     "firebase": "^12.7.0",
     "firebase-admin": "^12.7.0",

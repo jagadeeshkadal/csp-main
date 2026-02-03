@@ -7,7 +7,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import prisma from "../db/prisma";
+import prisma from "../db/prisma.js";
 const createUser = (user) => __awaiter(void 0, void 0, void 0, function* () {
     // Explicitly set deletedAt to null to ensure it's not undefined
     const newUser = yield prisma.user.create({
