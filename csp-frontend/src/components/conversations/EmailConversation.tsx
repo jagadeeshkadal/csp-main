@@ -3,7 +3,7 @@ import { conversationAPI } from '@/lib/api';
 import type { EmailMessage, EmailConversation as EmailConv, AIAgent } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, Mail, Bot, User, Clock, ChevronDown, ChevronUp, Loader2, Mic, Download } from 'lucide-react';
+import { Send, Mail, Bot, User, Clock, ChevronDown, ChevronUp, Loader2, Mic, Download, ArrowLeft } from 'lucide-react';
 import { getUserData } from '@/lib/storage';
 import { Textarea } from '@/components/ui/textarea';
 import { HistoryDownloadModal } from '../agents/HistoryDownloadModal';
@@ -13,9 +13,10 @@ interface EmailConversationProps {
   conversationId: string | null;
   onUnreadChange?: () => void;
   onVoiceClick?: () => void;
+  onBack?: () => void;
 }
 
-export function EmailConversation({ agent, conversationId, onUnreadChange, onVoiceClick }: EmailConversationProps) {
+export function EmailConversation({ agent, conversationId, onUnreadChange, onVoiceClick, onBack }: EmailConversationProps) {
   const [messages, setMessages] = useState<EmailMessage[]>([]);
   const [conversation, setConversation] = useState<EmailConv | null>(null);
   const [messageContent, setMessageContent] = useState('');
@@ -270,11 +271,22 @@ export function EmailConversation({ agent, conversationId, onUnreadChange, onVoi
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-background">
+    <div className="flex-1 flex flex-col bg-background overflow-x-hidden">
       {/* Simple Header - Agent Name Only (Gmail Style) */}
       <div className="border-b bg-card p-3 md:p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3 flex-1 min-w-0">
+            {onBack && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="md:hidden"
+                onClick={onBack}
+                title="Back to chats"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+            )}
             {/* Agent Avatar */}
             {agent.avatar ? (
               <img
@@ -316,8 +328,8 @@ export function EmailConversation({ agent, conversationId, onUnreadChange, onVoi
       />
 
       {/* Email Thread Messages */}
-      <ScrollArea className="flex-1">
-        <div className="py-4 px-3 md:px-4">
+      <ScrollArea className="flex-1 min-h-0">
+        <div className="py-4 px-3 md:px-4 break-words overflow-x-hidden">
           {loading ? (
             <div className="text-center text-muted-foreground py-8">Loading email thread...</div>
           ) : messages.length === 0 ? (
@@ -375,7 +387,7 @@ export function EmailConversation({ agent, conversationId, onUnreadChange, onVoi
                                 <span className="font-semibold text-sm">
                                   {message.senderType === 'agent' ? agent.name : (userData?.name || 'You')}
                                 </span>
-                                <span className="text-xs text-muted-foreground ml-2">
+                                <span className="text-xs text-muted-foreground ml-2 break-words">
                                   &lt;{message.senderType === 'agent'
                                     ? `${agent.name.toLowerCase().replace(/\s+/g, '.')}@ai-assistant.com`
                                     : (userData?.email || 'user@example.com')}
@@ -405,7 +417,7 @@ export function EmailConversation({ agent, conversationId, onUnreadChange, onVoi
 
                               {/* Expandable Details */}
                               {expandedDetails.has(message.id) && (
-                                <div className="text-xs text-muted-foreground space-y-1 mb-3 p-2 bg-muted/30 rounded border border-border/50">
+                                <div className="text-xs text-muted-foreground space-y-1 mb-3 p-2 bg-muted/30 rounded border border-border/50 break-words">
                                   <div>From: {message.senderType === 'agent'
                                     ? `${agent.name.toLowerCase().replace(/\s+/g, '.')}@ai-assistant.com`
                                     : (userData?.email || 'user@example.com')}
@@ -419,9 +431,9 @@ export function EmailConversation({ agent, conversationId, onUnreadChange, onVoi
                               )}
 
                               {/* Message Content */}
-                              <div className="text-sm whitespace-pre-wrap leading-relaxed mt-2">
+                              <div className="text-sm whitespace-pre-wrap leading-relaxed mt-2 break-words">
                                 {isExpanded ? message.content : (
-                                  <div className="line-clamp-2 text-muted-foreground">
+                                  <div className="line-clamp-2 text-muted-foreground break-words">
                                     {getMessagePreview(message.content)}
                                   </div>
                                 )}

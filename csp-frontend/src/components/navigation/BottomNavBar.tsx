@@ -16,7 +16,9 @@ export function BottomNavBar({ activeView, onViewChange, unreadCount = 0 }: Bott
                     onClick={() => onViewChange('home')}
                     className={cn(
                         "flex flex-col items-center justify-center flex-1 h-full transition-colors",
-                        activeView === 'home' ? "text-primary" : "text-muted-foreground"
+                        activeView === 'home'
+                            ? "text-primary dark:text-foreground"
+                            : "text-muted-foreground dark:text-foreground/70"
                     )}
                 >
                     <Home className="h-6 w-6" />
@@ -28,7 +30,9 @@ export function BottomNavBar({ activeView, onViewChange, unreadCount = 0 }: Bott
                     onClick={() => onViewChange('chats')}
                     className={cn(
                         "flex flex-col items-center justify-center flex-1 h-full transition-colors relative",
-                        activeView === 'chats' ? "text-primary" : "text-muted-foreground"
+                        activeView === 'chats'
+                            ? "text-primary dark:text-foreground"
+                            : "text-muted-foreground dark:text-foreground/70"
                     )}
                 >
                     <div className="relative">

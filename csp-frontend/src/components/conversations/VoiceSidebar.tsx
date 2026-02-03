@@ -354,12 +354,6 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
 
 
         recognitionRef.current = recognition;
-
-        try {
-          recognition.start();
-        } catch (e) {
-          console.error('[VoiceSidebar] Error starting recognition:', e);
-        }
       }
     }
 
@@ -407,6 +401,14 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
     }
 
     try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        alert('Microphone access is not available in this browser or context. Please use a supported browser and ensure the page is served over HTTPS.');
+        return;
+      }
+
+      // Request microphone access in a user gesture to trigger permission prompt
+      await startAudioVisualization();
+
       setIsCallActive(true);
       setIsMuted(false);
       recognitionRef.current.start();
@@ -418,12 +420,15 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
       hasDetectedWordsRef.current = false;
       finalTranscriptRef.current = '';
       console.log('[VoiceSidebar] 📞 Call started');
-
-      // Start audio visualization
-      startAudioVisualization();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error starting call:', error);
-      alert('Failed to start call. Please check microphone permissions.');
+      if (error?.name === 'NotAllowedError') {
+        alert('Microphone access was blocked. Please allow microphone permissions in your browser settings and try again.');
+      } else if (error?.name === 'NotFoundError') {
+        alert('No microphone was found. Please connect a microphone and try again.');
+      } else {
+        alert('Failed to start call. Please check microphone permissions.');
+      }
       setIsCallActive(false);
     }
   };
@@ -611,6 +616,7 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
     } catch (error) {
       console.error('Error starting audio visualization:', error);
       // Continue without visualization if it fails
+      throw error;
     }
   };
 

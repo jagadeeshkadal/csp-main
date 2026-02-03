@@ -39,6 +39,7 @@ export function HomePage() {
   const hasFetched = useRef(false);
   const leftNavbarRef = useRef<LeftNavbarRef>(null);
   const agentSidebarRef = useRef<AgentSidebarRef>(null);
+  const selectedAgentRef = useRef<AIAgent | null>(null);
 
   useEffect(() => {
     // Prevent multiple calls
@@ -96,7 +97,15 @@ export function HomePage() {
   }, [userData?.avatar, firebaseUser?.photoURL]);
 
   const handleAgentSelect = async (agent: AIAgent) => {
+    // Add a history entry so mobile back/swipe returns to the agent list
+    if (!selectedAgentRef.current) {
+      window.history.pushState({ view: 'agent', agentId: agent.id }, '');
+    } else if (selectedAgentRef.current.id !== agent.id) {
+      window.history.replaceState({ view: 'agent', agentId: agent.id }, '');
+    }
+
     setSelectedAgent(agent);
+    selectedAgentRef.current = agent;
     setConversationId(null);
     try {
       const response = await conversationAPI.createOrGetConversation(agent.id);
@@ -111,6 +120,45 @@ export function HomePage() {
     await firebaseSignOut();
     navigate('/');
   };
+
+  const resetToAgentList = () => {
+    setIsVoiceOpen(false);
+    setSelectedAgent(null);
+    setConversationId(null);
+    selectedAgentRef.current = null;
+  };
+
+  const handleBackToList = () => {
+    if (selectedAgentRef.current) {
+      window.history.back();
+    }
+  };
+
+  const handleMobileViewChange = (view: 'home' | 'chats') => {
+    setActiveView(view);
+    if (view === 'chats') {
+      if (selectedAgentRef.current) {
+        window.history.back();
+      }
+    } else {
+      setIsVoiceOpen(false);
+    }
+  };
+
+  useEffect(() => {
+    selectedAgentRef.current = selectedAgent;
+  }, [selectedAgent]);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      if (selectedAgentRef.current && activeView === 'chats') {
+        resetToAgentList();
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [activeView]);
 
   if (loading || !userData) {
     return (
@@ -215,6 +263,7 @@ export function HomePage() {
                       leftNavbarRef.current?.refreshUnreadCount();
                       agentSidebarRef.current?.refreshUnreadStatus();
                     }}
+                    onBack={handleBackToList}
                     onVoiceClick={() => setIsVoiceOpen(true)}
                   />
                   {/* Voice Sidebar - Desktop: right sidebar, Mobile: bottom sheet */}
@@ -245,6 +294,7 @@ export function HomePage() {
                   leftNavbarRef.current?.refreshUnreadCount();
                   agentSidebarRef.current?.refreshUnreadStatus();
                 }}
+                onBack={handleBackToList}
                 onVoiceClick={() => setIsVoiceOpen(true)}
               />
               {/* Voice Sidebar - Desktop only */}
@@ -265,7 +315,7 @@ export function HomePage() {
 
       <BottomNavBar
         activeView={activeView}
-        onViewChange={setActiveView}
+        onViewChange={handleMobileViewChange}
         unreadCount={0}
       />
     </div>

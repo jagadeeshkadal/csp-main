@@ -5,8 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { DropdownMenu, DropdownMenuItem } from '@/components/ui/dropdown-menu';
-import { Search, Bot, ChevronDown, Check, X, Pin, Download } from 'lucide-react';
-import { HistoryDownloadModal } from './HistoryDownloadModal';
+import { Search, Bot, ChevronDown, Check, X, Pin } from 'lucide-react';
 
 
 interface AgentSidebarProps {
@@ -28,8 +27,6 @@ export const AgentSidebar = forwardRef<AgentSidebarRef, AgentSidebarProps>(
     const [unreadAgents, setUnreadAgents] = useState<Set<string>>(new Set());
     const [pinnedAgents, setPinnedAgents] = useState<Set<string>>(new Set());
     const [conversations, setConversations] = useState<Map<string, string>>(new Map()); // agentId -> conversationId
-
-    const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
 
     useEffect(() => {
 
@@ -154,14 +151,6 @@ export const AgentSidebar = forwardRef<AgentSidebarRef, AgentSidebarProps>(
         <div className="p-3 md:p-4 border-b flex-shrink-0">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold">AI Agents</h2>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsDownloadModalOpen(true)}
-              title="Download chat history"
-            >
-              <Download className="h-5 w-5" />
-            </Button>
           </div>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
@@ -173,13 +162,6 @@ export const AgentSidebar = forwardRef<AgentSidebarRef, AgentSidebarProps>(
             />
           </div>
         </div>
-
-        <HistoryDownloadModal
-          isOpen={isDownloadModalOpen}
-          onClose={() => setIsDownloadModalOpen(false)}
-          agent={agents.find(a => a.id === selectedAgentId) || null}
-        />
-
 
         <ScrollArea className="flex-1 min-h-0">
 
