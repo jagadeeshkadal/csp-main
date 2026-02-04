@@ -1,5 +1,9 @@
 {
   "private": true,
+  "workspaces": [
+    "csp-backend",
+    "csp-frontend"
+  ],
   "scripts": {
     "build": "npm run build --workspace=csp-frontend && cp -r csp-frontend/dist ./dist",
     "vercel-build": "npm --prefix csp-frontend install --include=dev && npm --prefix csp-frontend run build && cp -r csp-frontend/dist ./dist",
