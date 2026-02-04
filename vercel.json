@@ -1,9 +1,8 @@
 {
-    "version": 2,
     "rewrites": [
         {
             "source": "/api/(.*)",
-            "destination": "/api/index.ts"
+            "destination": "http://13.62.71.120:4000/api/$1"
         },
         {
             "source": "/(.*)",
