@@ -44,6 +44,8 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
   const microphoneRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const animationFrameRef = useRef<number | null>(null);
+  const wasPlayingBeforeHoldRef = useRef<boolean>(false);
+  const isMutedRef = useRef<boolean>(false);
 
   // Handle audio playback when currentAudio changes - play immediately
   useEffect(() => {
@@ -222,6 +224,9 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
         recognition.lang = 'en-US';
 
         recognition.onresult = (event: any) => {
+          // If muted, ignore all input to prevent self-interruption or noise
+          if (isMutedRef.current) return;
+
           let finalTranscript = '';
           let interim = '';
 
@@ -445,6 +450,7 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
 
     const newMutedState = !isMuted;
     setIsMuted(newMutedState);
+    isMutedRef.current = newMutedState;
 
     // Mute/unmute the microphone track
     if (streamRef.current) {
@@ -461,36 +467,53 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
     setIsHoldActive(newHoldState);
 
     if (newHoldState) {
-      // Stop TTS audio abruptly
-      if (audioRef.current) {
-        console.log('[VoiceSidebar] 🛑 Hold pressed - stopping audio abruptly');
-        audioRef.current.pause();
-        audioRef.current.currentTime = 0;
-        setIsPlayingAudio(false);
-        setCurrentAudio(null);
+      // HOLDING: Stop audio but remember if it was playing
+      if (isPlayingAudio) {
+        console.log('[VoiceSidebar] 🛑 Hold pressed - processing paused');
+        wasPlayingBeforeHoldRef.current = true;
+        if (audioRef.current) {
+          audioRef.current.pause();
+          setIsPlayingAudio(false);
+        }
+      } else {
+        wasPlayingBeforeHoldRef.current = false;
       }
 
       // Mute the microphone
       if (!isMuted && streamRef.current) {
         setIsMuted(true);
+        isMutedRef.current = true;
         streamRef.current.getAudioTracks().forEach(track => {
           track.enabled = false;
         });
         console.log('[VoiceSidebar] 🎤 Hold pressed - muting microphone');
       }
 
-      // Clear status
+      // Clear status text visually but don't reset everything
       if (statusText === 'speaking') {
         setStatusText(null);
       }
     } else {
-      // Unmute the microphone when hold is released
+      // RESUMING: Unmute and potentially resume audio
       if (isMuted && streamRef.current) {
         setIsMuted(false);
+        isMutedRef.current = false;
         streamRef.current.getAudioTracks().forEach(track => {
           track.enabled = true;
         });
         console.log('[VoiceSidebar] 🎤 Hold released - unmuting microphone');
+      }
+
+      // Resume audio if it was playing before
+      if (wasPlayingBeforeHoldRef.current && audioRef.current && currentAudio) {
+        console.log('[VoiceSidebar] ▶️ Resuming audio after hold');
+        audioRef.current.play()
+          .then(() => {
+            setIsPlayingAudio(true);
+            setStatusText('speaking');
+          })
+          .catch(e => console.error('Error resuming audio:', e));
+        wasPlayingBeforeHoldRef.current = false;
       }
     }
   };
@@ -568,7 +591,13 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
   const startAudioVisualization = async () => {
     try {
       // Get microphone access
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      });
       streamRef.current = stream;
 
       // Apply mute state if already muted
