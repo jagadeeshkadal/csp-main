@@ -18,6 +18,30 @@ router.get("/test", (req: Request, res: Response) => {
   res.json({ status: "ok", message: "API is reachable!", timestamp: new Date() });
 });
 
+// DB Health Check
+import prisma from "../db/prisma.js";
+router.get("/test-db", async (req: Request, res: Response) => {
+  console.log("Testing DB connection...");
+  try {
+    await prisma.$connect();
+    // Simple query to verify
+    const userCount = await prisma.user.count();
+    res.json({
+      status: "ok",
+      message: "Database connection successful",
+      userCount,
+      databaseUrl: process.env.DATABASE_URL ? "Configured" : "Missing"
+    });
+  } catch (error) {
+    console.error("DB Connection failed:", error);
+    res.status(500).json({
+      status: "error",
+      message: "Database connection failed",
+      error: String(error)
+    });
+  }
+});
+
 // Auth routes
 router.post("/sso-signup", authController.ssoSignup);
 router.post("/sign-in", authController.signIn);

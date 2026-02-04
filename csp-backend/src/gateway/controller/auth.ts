@@ -20,23 +20,44 @@ const ssoSignup = async (req: Request, res: Response) => {
 const signIn = async (req: Request, res: Response) => {
     console.time('signIn-controller-total');
     try {
+        console.log('[signIn] Request received');
         console.time('signIn-controller-body-parse');
         const { token } = req.body;
         console.timeEnd('signIn-controller-body-parse');
 
+        if (!token) {
+            console.error('[signIn] No token provided in body');
+            return res.status(400).json({ message: "Token is required" });
+        }
+
         console.time('signIn-controller-core-call');
+        console.log('[signIn] Calling userCore.signIn...');
         const result = await userCore.signIn({ token });
         console.timeEnd('signIn-controller-core-call');
+        console.log('[signIn] userCore.signIn successful');
 
         console.time('signIn-controller-response');
         res.status(200).json(result);
         console.timeEnd('signIn-controller-response');
     } catch (e) {
         console.time('signIn-controller-error');
+        console.error('[signIn] CONTROLLER ERROR:', e);
+
+        const errorMessage = e instanceof Error ? e.message : String(e);
+        const errorStack = e instanceof Error ? e.stack : undefined;
+
+        console.error('[signIn] Error Message:', errorMessage);
+        console.error('[signIn] Error Stack:', errorStack);
+
         if (e instanceof BaseError) {
             res.status(e.status).json({ message: e.message });
         } else {
-            res.status(500).json({ message: "Internal server error" });
+            // Return actual error details for debugging (temporarily)
+            res.status(500).json({
+                message: "Internal server error during sign-in",
+                error: errorMessage,
+                details: errorStack
+            });
         }
         console.timeEnd('signIn-controller-error');
     }
