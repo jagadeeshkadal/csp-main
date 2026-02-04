@@ -45,8 +45,20 @@ if (!admin.apps.length) {
     }
     // 4. Fallback to Google Application Default Credentials (e.g. EC2 Role)
     else {
-      admin.initializeApp();
-      console.log("⚠️ Firebase Admin initialized with default application credentials (auto-discovery)");
+      // DANGER: checking for auto-discovery credentials can CRASH the app on Vercel if not present.
+      // We should only do this if NOT on Vercel, or if we are sure credentials exist.
+      // Better: Try/Catch the initialization itself specifically here.
+      try {
+        if (process.env.VERCEL) {
+          console.warn("⚠️ [Vercel] No Firebase Env Vars found. SKIPPING auto-discovery to prevent crash.");
+          console.warn("⚠️ Auth features will fail until FIREBASE_PRIVATE_KEY etc. are set.");
+        } else {
+          admin.initializeApp();
+          console.log("⚠️ Firebase Admin initialized with default application credentials (auto-discovery)");
+        }
+      } catch (err) {
+        console.error("❌ Firebase Auto-discovery failed (non-fatal start):", err);
+      }
     }
   } catch (error) {
     console.error("❌ Firebase Admin initialization failed:", error);
