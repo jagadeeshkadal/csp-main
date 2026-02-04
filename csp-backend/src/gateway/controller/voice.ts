@@ -21,7 +21,7 @@ const getUserIdFromRequest = async (req: Request): Promise<string> => {
  */
 const processVoice = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params; // conversationId
+    const id = req.params.id as string; // conversationId
     const userId = await getUserIdFromRequest(req);
     const { text } = req.body; // User's transcribed text
 
@@ -108,7 +108,7 @@ const processVoice = async (req: Request, res: Response) => {
  */
 const getVoiceExchanges = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params; // conversationId
+    const id = req.params.id as string; // conversationId
     const userId = await getUserIdFromRequest(req);
 
     // Verify conversation exists and user has access

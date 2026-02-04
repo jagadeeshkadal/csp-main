@@ -31,7 +31,7 @@ const searchAgents = async (req: Request, res: Response) => {
 
 const getAgent = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const agent = await agentCore.getAgent(id);
     res.status(200).json({ agent });
   } catch (e) {
@@ -65,7 +65,7 @@ const createAgent = async (req: Request, res: Response) => {
 
 const updateAgent = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { name, description, avatar, systemPrompt, isActive } = req.body;
     const agent = await agentCore.updateAgent(id, {
       name,
@@ -86,7 +86,7 @@ const updateAgent = async (req: Request, res: Response) => {
 
 const deleteAgent = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     await agentCore.deleteAgent(id);
     res.status(200).json({ message: "Agent deleted successfully" });
   } catch (e) {

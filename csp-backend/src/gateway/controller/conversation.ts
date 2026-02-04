@@ -31,7 +31,7 @@ const getConversations = async (req: Request, res: Response) => {
 
 const getConversation = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     console.log(`[getConversation controller] Requested conversation ID: ${id}`);
     const userId = await getUserIdFromRequest(req);
     console.log(`[getConversation controller] User ID from token: ${userId}`);
@@ -72,7 +72,7 @@ const createOrGetConversation = async (req: Request, res: Response) => {
 
 const getMessages = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const userId = await getUserIdFromRequest(req);
     const messages = await conversationCore.getMessages(id, userId);
     res.status(200).json({ messages });
@@ -87,7 +87,7 @@ const getMessages = async (req: Request, res: Response) => {
 
 const sendMessage = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { content } = req.body;
     const userId = await getUserIdFromRequest(req);
     const message = await conversationCore.sendMessage({
@@ -108,7 +108,7 @@ const sendMessage = async (req: Request, res: Response) => {
 
 const markMessagesAsRead = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const userId = await getUserIdFromRequest(req);
     await conversationCore.markMessagesAsRead(id, userId);
     res.status(200).json({ success: true });
@@ -123,7 +123,7 @@ const markMessagesAsRead = async (req: Request, res: Response) => {
 
 const markMessagesAsUnread = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const userId = await getUserIdFromRequest(req);
     await conversationCore.markMessagesAsUnread(id, userId);
     res.status(200).json({ success: true });
@@ -138,7 +138,7 @@ const markMessagesAsUnread = async (req: Request, res: Response) => {
 
 const togglePinConversation = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const userId = await getUserIdFromRequest(req);
     const conversation = await conversationCore.togglePinConversation(id, userId);
     res.status(200).json({ conversation });
