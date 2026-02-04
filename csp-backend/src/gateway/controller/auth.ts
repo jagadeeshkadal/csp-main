@@ -45,7 +45,8 @@ const signIn = async (req: Request, res: Response) => {
 
 const getCurrentUser = async (req: Request, res: Response) => {
     try {
-        const token = req.headers.authorization?.split(" ")[1];
+        const authHeader = req.headers.authorization;
+        const token = authHeader && typeof authHeader === 'string' ? authHeader.split(" ")[1] : undefined;
         if (!token) {
             return res.status(401).json({ message: "Unauthorized" });
         }
@@ -64,7 +65,8 @@ const getCurrentUser = async (req: Request, res: Response) => {
 
 const updateUser = async (req: Request, res: Response) => {
     try {
-        const token = req.headers.authorization?.split(" ")[1];
+        const authHeader = req.headers.authorization;
+        const token = authHeader && typeof authHeader === 'string' ? authHeader.split(" ")[1] : undefined;
         if (!token) {
             return res.status(401).json({ message: "Unauthorized" });
         }

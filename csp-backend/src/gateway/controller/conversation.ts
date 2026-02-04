@@ -4,7 +4,8 @@ import { BaseError } from "../../common/errors.js";
 import { verifyToken } from "../../core/auth/hydrator.js";
 
 const getUserIdFromRequest = async (req: Request): Promise<string> => {
-  const token = req.headers.authorization?.split(" ")[1];
+  const authHeader = req.headers.authorization;
+  const token = authHeader && typeof authHeader === 'string' ? authHeader.split(" ")[1] : undefined;
   if (!token) {
     throw new Error("No token provided");
   }

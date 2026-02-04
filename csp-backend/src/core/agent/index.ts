@@ -23,7 +23,13 @@ export const createAgent = async (params: {
     throw new BadRequestError("Invalid input", parsed.error.message);
   }
 
-  return await agentDML.createAgent(parsed.data);
+  return await agentDML.createAgent({
+    name: parsed.data.name,
+    description: parsed.data.description ?? undefined,
+    avatar: parsed.data.avatar ?? undefined,
+    systemPrompt: parsed.data.systemPrompt ?? undefined,
+    isActive: parsed.data.isActive ?? true
+  });
 };
 
 export const getAgent = async (id: string): Promise<IAIAgent> => {
@@ -60,7 +66,13 @@ export const updateAgent = async (
     throw new NotFoundError("Agent not found");
   }
 
-  const updatedAgent = await agentDML.updateAgent(id, params);
+  const updatedAgent = await agentDML.updateAgent(id, {
+    name: params.name,
+    description: params.description ?? undefined,
+    avatar: params.avatar ?? undefined,
+    systemPrompt: params.systemPrompt ?? undefined,
+    isActive: params.isActive ?? undefined
+  });
   if (!updatedAgent) {
     throw new NotFoundError("Failed to update agent");
   }

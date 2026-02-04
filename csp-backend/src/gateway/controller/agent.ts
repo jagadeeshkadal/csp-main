@@ -17,7 +17,7 @@ const getAllAgents = async (req: Request, res: Response) => {
 
 const searchAgents = async (req: Request, res: Response) => {
   try {
-    const searchTerm = req.query.q as string || "";
+    const searchTerm = (req.query.q as string) || "";
     const agents = await agentCore.searchAgents(searchTerm);
     res.status(200).json({ agents });
   } catch (e) {

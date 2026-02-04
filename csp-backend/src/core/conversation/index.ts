@@ -35,7 +35,11 @@ export const createConversation = async (params: {
     return existing;
   }
 
-  const newConversation = await conversationDML.createConversation(parsed.data);
+  const newConversation = await conversationDML.createConversation({
+    userId: parsed.data.userId,
+    agentId: parsed.data.agentId,
+    subject: parsed.data.subject ?? undefined
+  });
 
   // Fetch the full conversation with relations
   const fullConversation = await conversationDML.getConversationById(newConversation.id);
