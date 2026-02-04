@@ -33,10 +33,16 @@ export function GoogleSignIn({ onSuccess, onSignUp }: GoogleSignInProps) {
         onSuccess();
       } catch (err: any) {
         // User doesn't exist, need to sign up
-        if (err.response?.status === 401 || err.response?.status === 500) {
+        // ONLY redirect if we are sure it's a "User Not Found" scenario (usually 404, or 401 if strict)
+        // A 500 is a SERVER CRASH (DB error), do NOT redirect to signup.
+        if (err.response?.status === 404 || (err.response?.status === 401 && err.response?.data?.message !== "Unauthorized")) {
           // User not found, proceed to sign up
           onSignUp(token);
         } else {
+          // Is it a 500 error?
+          if (err.response?.status === 500) {
+            throw new Error(`Server Error (Database Connection Failed). Please check Vercel Logs.`);
+          }
           throw err;
         }
       }
