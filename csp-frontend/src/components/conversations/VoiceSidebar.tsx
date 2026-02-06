@@ -30,6 +30,7 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
   const [statusText, setStatusText] = useState<'listening' | 'thinking' | 'researching' | 'speaking' | null>(null);
   const [currentAudio, setCurrentAudio] = useState<string | null>(null);
   const [interimTranscript, setInterimTranscript] = useState('');
+  const [lastAgentResponse, setLastAgentResponse] = useState('');
   const [audioLevel, setAudioLevel] = useState(0);
   const [pulseLevel, setPulseLevel] = useState(0);
   const recognitionRef = useRef<any>(null);
@@ -357,6 +358,20 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
           }
         };
 
+        // Keep-alive handlers to prevent auto-stop during audio playback
+        recognition.onsoundend = () => {
+          // Only keep alive if still recording
+          if (isRecordingRef.current) {
+            console.log('[VoiceSidebar] 🔇 Sound ended - keeping recognition alive');
+          }
+        };
+
+        recognition.onspeechend = () => {
+          // Only keep alive if still recording
+          if (isRecordingRef.current) {
+            console.log('[VoiceSidebar] 🗣️ Speech ended - staying in listening mode');
+          }
+        };
 
         recognitionRef.current = recognition;
       }
@@ -550,41 +565,51 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
   };
 
   const stopRecording = () => {
-    if (recognitionRef.current && isRecording) {
+    // Set flags FIRST to prevent any restarts from keep-alive handlers
+    setIsRecording(false);
+    isRecordingRef.current = false;
+    setStatusText(null);
+
+    if (recognitionRef.current) {
       try {
-        recognitionRef.current.stop();
+        // Abort recognition forcefully to prevent restart
+        recognitionRef.current.abort();
+        console.log('[VoiceSidebar] 🛑 Recognition aborted');
       } catch (e) {
-        console.log('Error stopping recognition:', e);
+        console.log('[VoiceSidebar] Error aborting recognition, trying stop:', e);
+        try {
+          recognitionRef.current.stop();
+        } catch (e2) {
+          console.log('[VoiceSidebar] Error stopping recognition:', e2);
+        }
       }
-      setIsRecording(false);
-      isRecordingRef.current = false;
-      setStatusText(null);
-
-      // Stop any playing audio
-      if (audioRef.current && !audioRef.current.paused) {
-        console.log('[VoiceSidebar] 🛑 Stopping audio when stopping listening');
-        audioRef.current.pause();
-        audioRef.current.currentTime = 0;
-        setIsPlayingAudio(false);
-        setCurrentAudio(null);
-      }
-
-      // Stop audio visualization
-      stopAudioVisualization();
-
-      if (noWordsTimeoutRef.current) {
-        clearTimeout(noWordsTimeoutRef.current);
-        noWordsTimeoutRef.current = null;
-      }
-      hasDetectedWordsRef.current = false;
-
-      // Clear transcripts
-      setInterimTranscript('');
-      interimTranscriptRef.current = '';
-      finalTranscriptRef.current = '';
-
-      console.log('[VoiceSidebar] 🛑 Listening stopped and everything cleared');
     }
+
+    // Stop any playing audio
+    if (audioRef.current && !audioRef.current.paused) {
+      console.log('[VoiceSidebar] 🛑 Stopping audio when stopping listening');
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      setIsPlayingAudio(false);
+      setCurrentAudio(null);
+    }
+
+    // Stop audio visualization
+    stopAudioVisualization();
+
+    if (noWordsTimeoutRef.current) {
+      clearTimeout(noWordsTimeoutRef.current);
+      noWordsTimeoutRef.current = null;
+    }
+    hasDetectedWordsRef.current = false;
+
+    // Clear transcripts
+    setInterimTranscript('');
+    interimTranscriptRef.current = '';
+    finalTranscriptRef.current = '';
+    setLastAgentResponse(''); // Clear agent response caption
+
+    console.log('[VoiceSidebar] 🛑 Listening stopped and everything cleared');
   };
 
   // Update audio visualization to respect mute state
@@ -675,6 +700,9 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
 
       console.log('[VoiceSidebar] ✅ Received response:', response);
       setStatusText(null); // Clear status when response received
+
+      // Store agent response for caption display
+      setLastAgentResponse(response.exchange.agentResponse);
 
       // Play agent audio response if available
       if (response.exchange.agentAudioUrl) {
@@ -812,8 +840,25 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
           setIsPlayingAudio(false);
         }}
         onEnded={() => {
+          console.log('[VoiceSidebar] 🎵 Audio playback ended');
           setIsPlayingAudio(false);
-          setStatusText(null);
+
+          // CRITICAL FIX: Restart listening if call is still active
+          if (isRecordingRef.current && recognitionRef.current) {
+            setStatusText('listening');
+
+            // Restart speech recognition after audio ends
+            try {
+              recognitionRef.current.start();
+              console.log('[VoiceSidebar] ✅ Speech recognition restarted after audio ended');
+            } catch (e) {
+              console.log('[VoiceSidebar] Recognition already running or error:', e);
+              // If already running, that's fine - just update status
+              setStatusText('listening');
+            }
+          } else {
+            setStatusText(null);
+          }
         }}
         onTimeUpdate={() => {
           // Continuously check if user is speaking and stop audio if needed
@@ -935,6 +980,34 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
               {statusText === 'researching' && 'researching...'}
               {statusText === 'speaking' && 'speaking'}
             </span>
+          </div>
+        )}
+
+        {/* Real-time Captions */}
+        {isCallActive && (
+          <div className="mt-4 px-4 min-h-[80px] max-h-[120px] overflow-y-auto">
+            {/* User's speech (real-time) */}
+            {interimTranscript && (
+              <div className="mb-2 p-3 bg-primary/10 rounded-lg border border-primary/20">
+                <p className="text-xs text-muted-foreground mb-1">You:</p>
+                <p className="text-sm text-foreground italic">{interimTranscript}</p>
+              </div>
+            )}
+
+            {/* AI's response */}
+            {isPlayingAudio && lastAgentResponse && (
+              <div className="mb-2 p-3 bg-secondary/50 rounded-lg border border-border">
+                <p className="text-xs text-muted-foreground mb-1">{agent?.name || 'AI'}:</p>
+                <p className="text-sm text-foreground">{lastAgentResponse}</p>
+              </div>
+            )}
+
+            {/* Show a placeholder when nothing is being said */}
+            {!interimTranscript && !isPlayingAudio && (
+              <div className="text-center text-xs text-muted-foreground py-4">
+                Captions will appear here...
+              </div>
+            )}
           </div>
         )}
       </div>
