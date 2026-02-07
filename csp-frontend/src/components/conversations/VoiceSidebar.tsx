@@ -33,8 +33,9 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
   const [interimTranscript, setInterimTranscript] = useState('');
   const [lastAgentResponse, setLastAgentResponse] = useState('');
   const [audioLevel, setAudioLevel] = useState(0);
-  const [micSensitivity, setMicSensitivity] = useState(0.5); // Default 50%
+  const [inputGain, setInputGain] = useState(1.0); // Default 1.0 (100%)
   const [autoSensitivity, setAutoSensitivity] = useState(true); // Default auto logic
+  const [bargeInEnabled, setBargeInEnabled] = useState(true); // Default enabled
   const [showSettings, setShowSettings] = useState(false);
   const [pulseLevel, setPulseLevel] = useState(0);
   const recognitionRef = useRef<any>(null);
@@ -47,11 +48,13 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
 
   const isHoldActiveRef = useRef<boolean>(false);
   const ignoreUnmuteEchoRef = useRef<boolean>(false); // Ref to ignore input immediately after unmuting to prevent echo
-  const micSensitivityRef = useRef<number>(0.5);
+  const inputGainRef = useRef<number>(1.0);
   const autoSensitivityRef = useRef<boolean>(true);
+  const bargeInEnabledRef = useRef<boolean>(true);
   const lastLoudTimeRef = useRef<number>(0);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
+  const gainNodeRef = useRef<GainNode | null>(null);
   const microphoneRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const animationFrameRef = useRef<number | null>(null);
@@ -154,12 +157,21 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
 
   // Sync refs with state for use in callbacks/loops
   useEffect(() => {
-    micSensitivityRef.current = micSensitivity;
-  }, [micSensitivity]);
+    inputGainRef.current = inputGain;
+
+    // Update gain node if it exists
+    if (gainNodeRef.current) {
+      gainNodeRef.current.gain.value = inputGain;
+    }
+  }, [inputGain]);
 
   useEffect(() => {
     autoSensitivityRef.current = autoSensitivity;
   }, [autoSensitivity]);
+
+  useEffect(() => {
+    bargeInEnabledRef.current = bargeInEnabled;
+  }, [bargeInEnabled]);
 
   useEffect(() => {
     isPlayingAudioRef.current = isPlayingAudio;
@@ -209,6 +221,22 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
     }
   }, [interimTranscript, isPlayingAudio]);
 
+  // Start audio visualization when settings are open to allow testing mic
+  useEffect(() => {
+    if (showSettings && !isCallActive) {
+      console.log('[VoiceSidebar] ⚙️ Settings opened, starting visualization for mic test');
+      startAudioVisualization().catch(err => {
+        console.error('[VoiceSidebar] Failed to start visualization for settings:', err);
+      });
+      return () => {
+        if (!isCallActive) {
+          console.log('[VoiceSidebar] ⚙️ Settings closed/unmounted, stopping visualization');
+          stopAudioVisualization();
+        }
+      };
+    }
+  }, [showSettings, isCallActive]);
+
   // Pulse animation for playing/thinking states
   useEffect(() => {
     if (isPlayingAudio || statusText) {
@@ -250,8 +278,9 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
         recognition.lang = 'en-US';
 
         recognition.onresult = (event: any) => {
-          // ECHO PREVENTION: Block ALL input while AI is speaking
-          if (isPlayingAudioRef.current) {
+          // ECHO PREVENTION: Block input while AI is speaking IF barge-in is disabled
+          // If barge-in is ENABLED, we simply proceed (user can interrupt)
+          if (isPlayingAudioRef.current && !bargeInEnabledRef.current) {
             console.log('[VoiceSidebar] 🛡️ Blocking input - AI is speaking (echo prevention)');
             return;
           }
@@ -604,6 +633,10 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
       audioContextRef.current = null;
     }
 
+    if (gainNodeRef.current) {
+      gainNodeRef.current = null;
+    }
+
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
@@ -691,9 +724,15 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
       analyser.smoothingTimeConstant = 0.8;
       analyserRef.current = analyser;
 
-      // Connect microphone to analyser
+      // Create gain node for input volume control
+      const gainNode = audioContext.createGain();
+      gainNode.gain.value = inputGainRef.current;
+      gainNodeRef.current = gainNode;
+
+      // Connect microphone -> gain -> analyser
       const microphone = audioContext.createMediaStreamSource(stream);
-      microphone.connect(analyser);
+      microphone.connect(gainNode);
+      gainNode.connect(analyser);
       microphoneRef.current = microphone;
 
       // Start analyzing audio levels
@@ -706,8 +745,8 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
 
         analyserRef.current.getByteFrequencyData(dataArray);
 
-        // Calculate average volume (only if not muted AND not on hold)
-        const average = (isMuted || isHoldActive) ? 0 : dataArray.reduce((sum, value) => sum + value, 0) / dataArray.length;
+        // Calculate average volume (only if not muted AND not on hold, UNLESS settings is open)
+        const average = (isHoldActive || (isMuted && !showSettings)) ? 0 : dataArray.reduce((sum, value) => sum + value, 0) / dataArray.length;
         const normalizedLevel = Math.min(average / 128, 1); // Normalize to 0-1
 
         audioLevelRef.current = normalizedLevel; // Keep ref in sync for onresult
@@ -715,7 +754,8 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
         // Update Last Loud Time for Noise Gate
         // If we are above the threshold, mark this moment as "Loud"
         // If Auto is ON, we assume everything is "Loud" enough (or use a low default)
-        const threshold = autoSensitivityRef.current ? 0.01 : micSensitivityRef.current;
+        // With Gain control, we use a fixed threshold because the user boosts the signal to cross it
+        const threshold = 0.01;
         if (normalizedLevel > threshold) {
           lastLoudTimeRef.current = Date.now();
         } else if (normalizedLevel > 0.05) {
@@ -861,11 +901,24 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
             />
           </div>
 
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <label className="text-sm font-medium">Allow Interruptions</label>
+              <p className="text-[10px] text-muted-foreground">
+                Turn off if the agent hears itself (echo)
+              </p>
+            </div>
+            <Switch
+              checked={bargeInEnabled}
+              onCheckedChange={setBargeInEnabled}
+            />
+          </div>
+
           {!autoSensitivity && (
             <div className="space-y-3 pt-2">
               <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Input Sensitivity</span>
-                <span>{Math.round(micSensitivity * 100)}%</span>
+                <span>Input Volume</span>
+                <span>{Math.round(inputGain * 100)}%</span>
               </div>
 
               {/* Discord-style Segmented Voice Activity Bar */}
@@ -874,41 +927,36 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
                 {Array.from({ length: 40 }).map((_, index) => {
                   const segmentValue = (index + 1) / 40; // 0.025, 0.05, 0.075, ..., 1.0
                   const isActive = audioLevel >= segmentValue;
-                  const isAboveThreshold = segmentValue > micSensitivity;
+                  // Fixed threshold for visualization color
+                  const isAboveThreshold = segmentValue > 0.01;
 
                   return (
                     <div
                       key={index}
                       className={cn(
                         "flex-1 h-4 rounded-sm transition-all duration-75",
-                        isActive && isRecording
+                        isActive && (isRecording || showSettings)
                           ? isAboveThreshold
-                            ? "bg-yellow-500" // Above threshold - yellow/orange like Discord
-                            : "bg-gray-500" // Below threshold - gray
+                            ? "bg-green-500" // Good signal - green
+                            : "bg-gray-500" // Noise floor - gray
                           : "bg-secondary" // Inactive - dark gray background
                       )}
                       style={{
-                        opacity: isActive && isRecording ? 1 : 0.3
+                        opacity: isActive && (isRecording || showSettings) ? 1 : 0.3
                       }}
                     />
                   );
                 })}
-
-                {/* Threshold Marker Line */}
-                <div
-                  className="absolute h-full w-0.5 bg-red-500 pointer-events-none z-10"
-                  style={{ left: `${micSensitivity * 100}%` }}
-                />
               </div>
 
-              {/* Slider for adjusting threshold */}
+              {/* Slider for adjusting gain */}
               <input
                 type="range"
                 min="0"
-                max="1"
-                step="0.01"
-                value={micSensitivity}
-                onChange={(e) => setMicSensitivity(parseFloat(e.target.value))}
+                max="3"
+                step="0.1"
+                value={inputGain}
+                onChange={(e) => setInputGain(parseFloat(e.target.value))}
                 className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer
                     [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 
                     [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary
@@ -916,7 +964,7 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
                     [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:border-0"
               />
               <p className="text-[10px] text-muted-foreground">
-                Speak to see the bars light up. Adjust the slider to set the minimum voice level needed. Red line shows your threshold.
+                Adjust input volume if your microphone is too quiet or too loud.
               </p>
             </div>
           )}
