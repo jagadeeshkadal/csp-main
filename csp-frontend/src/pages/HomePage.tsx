@@ -32,7 +32,7 @@ export function HomePage() {
   const [loading, setLoading] = useState(true);
   const [selectedAgent, setSelectedAgent] = useState<AIAgent | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
-  const [activeView, setActiveView] = useState<'home' | 'chats'>('chats');
+  const [activeView, setActiveView] = useState<'home' | 'chats'>('home');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isVoiceOpen, setIsVoiceOpen] = useState(false);
   const navigate = useNavigate();

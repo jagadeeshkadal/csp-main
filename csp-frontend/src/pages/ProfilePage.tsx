@@ -278,17 +278,7 @@ export function ProfilePage() {
                   </p>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="phoneExtension" className="text-sm font-semibold">Phone Extension</Label>
-                  <Input
-                    id="phoneExtension"
-                    type="text"
-                    value={formData.phoneExtension}
-                    onChange={(e) => setFormData({ ...formData, phoneExtension: e.target.value })}
-                    placeholder="e.g., +91"
-                    className="h-11 shadow-sm"
-                  />
-                </div>
+
               </div>
 
               <div className="space-y-2 pt-6 border-t mt-4">

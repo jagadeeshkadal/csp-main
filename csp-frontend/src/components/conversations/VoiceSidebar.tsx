@@ -2,7 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { voiceAPI } from '@/lib/api';
 import type { AIAgent } from '@/lib/api';
 import { Button } from '@/components/ui/button';
-import { Mic, MicOff, Loader2, Phone, PhoneOff, Pause, X } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Mic, MicOff, Loader2, Phone, PhoneOff, Pause, X, Settings, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface VoiceSidebarProps {
@@ -32,6 +33,9 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
   const [interimTranscript, setInterimTranscript] = useState('');
   const [lastAgentResponse, setLastAgentResponse] = useState('');
   const [audioLevel, setAudioLevel] = useState(0);
+  const [micSensitivity, setMicSensitivity] = useState(0.5); // Default 50%
+  const [autoSensitivity, setAutoSensitivity] = useState(true); // Default auto logic
+  const [showSettings, setShowSettings] = useState(false);
   const [pulseLevel, setPulseLevel] = useState(0);
   const recognitionRef = useRef<any>(null);
   const noWordsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -40,8 +44,12 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
   const hasDetectedWordsRef = useRef<boolean>(false);
   const interimTranscriptRef = useRef<string>('');
   const isRecordingRef = useRef<boolean>(false);
+
   const isHoldActiveRef = useRef<boolean>(false);
   const ignoreUnmuteEchoRef = useRef<boolean>(false); // Ref to ignore input immediately after unmuting to prevent echo
+  const micSensitivityRef = useRef<number>(0.5);
+  const autoSensitivityRef = useRef<boolean>(true);
+  const lastLoudTimeRef = useRef<number>(0);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const microphoneRef = useRef<MediaStreamAudioSourceNode | null>(null);
@@ -49,6 +57,7 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
   const animationFrameRef = useRef<number | null>(null);
   const wasPlayingBeforeHoldRef = useRef<boolean>(false);
   const isMutedRef = useRef<boolean>(false);
+  const isPlayingAudioRef = useRef<boolean>(false);
   const audioLevelRef = useRef<number>(0);
 
   // Handle audio playback when currentAudio changes - play immediately
@@ -143,6 +152,19 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
     }
   }, [statusText]);
 
+  // Sync refs with state for use in callbacks/loops
+  useEffect(() => {
+    micSensitivityRef.current = micSensitivity;
+  }, [micSensitivity]);
+
+  useEffect(() => {
+    autoSensitivityRef.current = autoSensitivity;
+  }, [autoSensitivity]);
+
+  useEffect(() => {
+    isPlayingAudioRef.current = isPlayingAudio;
+  }, [isPlayingAudio]);
+
   // Continuously monitor for speech and stop audio immediately when any word is detected
   useEffect(() => {
     const hasWords = interimTranscript.trim().length > 0;
@@ -228,6 +250,12 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
         recognition.lang = 'en-US';
 
         recognition.onresult = (event: any) => {
+          // ECHO PREVENTION: Block ALL input while AI is speaking
+          if (isPlayingAudioRef.current) {
+            console.log('[VoiceSidebar] 🛡️ Blocking input - AI is speaking (echo prevention)');
+            return;
+          }
+
           // If muted OR hold is active OR we are suppressing echo after unmute
           if (isMutedRef.current || isHoldActiveRef.current || ignoreUnmuteEchoRef.current) {
             if (ignoreUnmuteEchoRef.current) {
@@ -453,6 +481,8 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
       interimTranscriptRef.current = '';
       hasDetectedWordsRef.current = false;
       finalTranscriptRef.current = '';
+      // Initialize lastLoudTimeRef to now so gate doesn't block initial audio
+      lastLoudTimeRef.current = Date.now();
       console.log('[VoiceSidebar] 📞 Call started');
     } catch (error: any) {
       console.error('Error starting call:', error);
@@ -681,6 +711,28 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
         const normalizedLevel = Math.min(average / 128, 1); // Normalize to 0-1
 
         audioLevelRef.current = normalizedLevel; // Keep ref in sync for onresult
+
+        // Update Last Loud Time for Noise Gate
+        // If we are above the threshold, mark this moment as "Loud"
+        // If Auto is ON, we assume everything is "Loud" enough (or use a low default)
+        const threshold = autoSensitivityRef.current ? 0.01 : micSensitivityRef.current;
+        if (normalizedLevel > threshold) {
+          lastLoudTimeRef.current = Date.now();
+        } else if (normalizedLevel > 0.05) {
+          // Debug logging for why it might not be triggering
+          console.log('[VoiceSidebar] 📉 Audio level below threshold:', {
+            level: normalizedLevel,
+            threshold,
+            isAuto: autoSensitivityRef.current
+          });
+        } else if (normalizedLevel > 0.05) {
+          // Debug logging for why it might not be triggering
+          // console.log('[VoiceSidebar] 📉 Audio level below threshold:', {
+          //    level: normalizedLevel,
+          //    threshold,
+          //    isAuto: autoSensitivityRef.current
+          // });
+        }
         setAudioLevel(normalizedLevel);
 
         animationFrameRef.current = requestAnimationFrame(updateAudioLevel);
@@ -782,11 +834,94 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
           </div>
         </div>
         {onClose && (
-          <Button variant="ghost" size="icon" onClick={onClose}>
-            <X className="h-5 w-5" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button
+              variant={showSettings ? "secondary" : "ghost"}
+              size="icon"
+              onClick={() => setShowSettings(!showSettings)}
+              title="Audio Settings"
+            >
+              <Settings className="h-5 w-5" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={onClose}>
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
         )}
       </div>
+
+      {/* Settings Panel - Overlay */}
+      {showSettings && (
+        <div className="border-b bg-secondary/20 p-4 space-y-4 animate-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium">Automatic Noise Sensitivity</label>
+            <Switch
+              checked={autoSensitivity}
+              onCheckedChange={setAutoSensitivity}
+            />
+          </div>
+
+          {!autoSensitivity && (
+            <div className="space-y-3 pt-2">
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>Input Sensitivity</span>
+                <span>{Math.round(micSensitivity * 100)}%</span>
+              </div>
+
+              {/* Discord-style Segmented Voice Activity Bar */}
+              <div className="relative h-8 w-full flex items-center gap-0.5">
+                {/* Generate 40 segments */}
+                {Array.from({ length: 40 }).map((_, index) => {
+                  const segmentValue = (index + 1) / 40; // 0.025, 0.05, 0.075, ..., 1.0
+                  const isActive = audioLevel >= segmentValue;
+                  const isAboveThreshold = segmentValue > micSensitivity;
+
+                  return (
+                    <div
+                      key={index}
+                      className={cn(
+                        "flex-1 h-4 rounded-sm transition-all duration-75",
+                        isActive && isRecording
+                          ? isAboveThreshold
+                            ? "bg-yellow-500" // Above threshold - yellow/orange like Discord
+                            : "bg-gray-500" // Below threshold - gray
+                          : "bg-secondary" // Inactive - dark gray background
+                      )}
+                      style={{
+                        opacity: isActive && isRecording ? 1 : 0.3
+                      }}
+                    />
+                  );
+                })}
+
+                {/* Threshold Marker Line */}
+                <div
+                  className="absolute h-full w-0.5 bg-red-500 pointer-events-none z-10"
+                  style={{ left: `${micSensitivity * 100}%` }}
+                />
+              </div>
+
+              {/* Slider for adjusting threshold */}
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={micSensitivity}
+                onChange={(e) => setMicSensitivity(parseFloat(e.target.value))}
+                className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer
+                    [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 
+                    [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary
+                    [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 
+                    [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:border-0"
+              />
+              <p className="text-[10px] text-muted-foreground">
+                Speak to see the bars light up. Adjust the slider to set the minimum voice level needed. Red line shows your threshold.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Audio element for playback */}
       <audio
