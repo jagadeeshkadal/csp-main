@@ -8,12 +8,14 @@ interface HistoryDownloadModalProps {
     isOpen: boolean;
     onClose: () => void;
     agent: AIAgent | null;
+    conversationId?: string | null;
 }
 
 export function HistoryDownloadModal({
     isOpen,
     onClose,
-    agent
+    agent,
+    conversationId
 }: HistoryDownloadModalProps) {
     const [isDownloading, setIsDownloading] = useState(false);
 
@@ -22,60 +24,36 @@ export function HistoryDownloadModal({
 
         try {
             setIsDownloading(true);
-
-            // Get standard email conversations
-            const response = await conversationAPI.getConversations();
-            const conversation = response.conversations.find(c => c.agentId === agent.id);
-
             let conversationsToExport: EmailConversation[] = [];
 
-            if (conversation) {
-                // Always fetch full conversation details to ensure we have all messages
-                // getConversations() might only return a preview or limited messages
-                const convResponse = await conversationAPI.getConversation(conversation.id);
+            // If a specific conversation ID is provided, use it directly (Best for "Download Current Chat")
+            if (conversationId) {
+                console.log('Downloading specific conversation:', conversationId);
+                const convResponse = await conversationAPI.getConversation(conversationId);
                 let fullConv = convResponse.conversation;
 
-                // Fetch voice exchanges
-                try {
-                    const voiceResponse = await voiceAPI.getVoiceExchanges(fullConv.id);
-                    const voiceExchanges = voiceResponse.exchanges || [];
-
-                    if (voiceExchanges.length > 0) {
-                        const voiceMessages: any[] = [];
-
-                        voiceExchanges.forEach((exchange: VoiceExchange) => {
-                            // User part
-                            voiceMessages.push({
-                                id: `voice-user-${exchange.id}`,
-                                conversationId: exchange.conversationId,
-                                senderType: 'user',
-                                content: `[Voice Transcript] ${exchange.userTranscript}`,
-                                isRead: true,
-                                createdAt: exchange.createdAt,
-                                updatedAt: exchange.createdAt
-                            });
-
-                            // Agent part
-                            voiceMessages.push({
-                                id: `voice-agent-${exchange.id}`,
-                                conversationId: exchange.conversationId,
-                                senderType: 'agent',
-                                content: `[Voice Response] ${exchange.agentResponse}`,
-                                isRead: true,
-                                createdAt: exchange.createdAt, // Same timestamp
-                                updatedAt: exchange.createdAt
-                            });
-                        });
-
-                        // Merge standard messages with voice messages
-                        fullConv.messages = [...(fullConv.messages || []), ...voiceMessages];
-                    }
-                } catch (error) {
-                    console.error('Failed to fetch voice exchanges:', error);
-                    // Continue even if voice fetch fails
-                }
-
+                // Fetch and merge voice exchanges
+                await mergeVoiceExchanges(fullConv);
                 conversationsToExport = [fullConv];
+            }
+            // Fallback: Try to find a conversation for this agent (Legacy behavior)
+            else {
+                console.log('No conversationId provided, searching for agent conversation...');
+                const response = await conversationAPI.getConversations();
+                const conversation = response.conversations.find(c => c.agentId === agent.id);
+
+                if (conversation) {
+                    const convResponse = await conversationAPI.getConversation(conversation.id);
+                    let fullConv = convResponse.conversation;
+                    await mergeVoiceExchanges(fullConv);
+                    conversationsToExport = [fullConv];
+                }
+            }
+
+            if (conversationsToExport.length === 0) {
+                alert('No conversation history found for this agent.');
+                setIsDownloading(false);
+                return;
             }
 
             if (conversationsToExport.length === 0) {
@@ -181,4 +159,46 @@ export function HistoryDownloadModal({
             </div>
         </div>
     );
+}
+
+// Helper to merge voice exchanges
+async function mergeVoiceExchanges(fullConv: EmailConversation) {
+    try {
+        const voiceResponse = await voiceAPI.getVoiceExchanges(fullConv.id);
+        const voiceExchanges = voiceResponse.exchanges || [];
+
+        if (voiceExchanges.length > 0) {
+            const voiceMessages: any[] = [];
+
+            voiceExchanges.forEach((exchange: VoiceExchange) => {
+                // User part
+                voiceMessages.push({
+                    id: `voice-user-${exchange.id}`,
+                    conversationId: exchange.conversationId,
+                    senderType: 'user',
+                    content: `[Voice Transcript] ${exchange.userTranscript}`,
+                    isRead: true,
+                    createdAt: exchange.createdAt,
+                    updatedAt: exchange.createdAt
+                });
+
+                // Agent part
+                voiceMessages.push({
+                    id: `voice-agent-${exchange.id}`,
+                    conversationId: exchange.conversationId,
+                    senderType: 'agent',
+                    content: `[Voice Response] ${exchange.agentResponse}`,
+                    isRead: true,
+                    createdAt: exchange.createdAt, // Same timestamp
+                    updatedAt: exchange.createdAt
+                });
+            });
+
+            // Merge standard messages with voice messages
+            fullConv.messages = [...(fullConv.messages || []), ...voiceMessages];
+        }
+    } catch (error) {
+        console.error('Failed to fetch voice exchanges:', error);
+        // Continue even if voice fetch fails
+    }
 }

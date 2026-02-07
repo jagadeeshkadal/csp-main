@@ -38,6 +38,8 @@ model AIAgent {
   description     String?
   avatar          String?
   systemPrompt    String?
+  voice           String?
+  voiceSpeed      Float?
   isActive        Boolean  @default(true)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt

@@ -27,11 +27,20 @@ export function EmailConversation({ agent, conversationId, onUnreadChange, onVoi
   const [isRefreshing, setIsRefreshing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const refreshIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const conversationIdRef = useRef<string | null>(conversationId); // Track current conversation
   const userData = getUserData();
   const [expandedDetails, setExpandedDetails] = useState<Set<string>>(new Set());
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
 
   useEffect(() => {
+    // Update ref to track current conversation
+    conversationIdRef.current = conversationId;
+
+    // CRITICAL: Clear messages immediately when conversation changes to prevent leakage
+    setMessages([]);
+    setConversation(null);
+    setExpandedMessages(new Set());
+
     if (conversationId) {
       loadConversation(false); // Initial load without animation
       // Mark agent messages as read when conversation is viewed
@@ -60,7 +69,7 @@ export function EmailConversation({ agent, conversationId, onUnreadChange, onVoi
 
         refreshIntervalRef.current = setTimeout(() => {
           console.log('[EmailConversation] Auto-refreshing conversation...');
-          loadConversation(true); // Subsequent refreshes with animation
+          loadConversation(false); // Subsequent refreshes WITHOUT animation to prevent flickering
           // Schedule next refresh
           scheduleNextRefresh();
         }, randomInterval);
@@ -77,9 +86,6 @@ export function EmailConversation({ agent, conversationId, onUnreadChange, onVoi
         }
       };
     } else {
-      setMessages([]);
-      setConversation(null);
-      setExpandedMessages(new Set());
       setIsRefreshing(false);
       if (refreshIntervalRef.current) {
         clearTimeout(refreshIntervalRef.current);
@@ -143,69 +149,130 @@ export function EmailConversation({ agent, conversationId, onUnreadChange, onVoi
   const handleSendMessage = async () => {
     if (!messageContent.trim() || !conversationId || sending) return;
 
-    try {
-      setSending(true);
-      setWaitingForAgent(true);
+    // Capture the current conversation ID to prevent message leakage
+    const targetConversationId = conversationId;
+    const messageText = messageContent.trim();
 
-      // Send the message
-      const response = await conversationAPI.sendMessage(conversationId, messageContent);
-      setMessages((prev) => [...prev, response.message]);
-      setMessageContent('');
+    // Clear input immediately
+    setMessageContent('');
 
-      // Wait a bit for agent response to be generated
-      await new Promise(resolve => setTimeout(resolve, 1000));
+    // Create optimistic message (show immediately in UI)
+    const optimisticMessage: EmailMessage = {
+      id: `temp-${Date.now()}`, // Temporary ID
+      conversationId: targetConversationId,
+      senderType: 'user',
+      content: messageText,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      isRead: true,
+    };
 
-      // Poll for agent response (check every 2 seconds, max 30 seconds)
-      let attempts = 0;
-      const maxAttempts = 15; // 15 attempts * 2 seconds = 30 seconds max
+    // Add optimistic message to UI immediately (only if still on same conversation)
+    if (conversationIdRef.current === targetConversationId) {
+      setMessages((prev) => [...prev, optimisticMessage]);
+    }
+    setSending(true);
 
-      const checkForAgentResponse = async () => {
-        attempts++;
-        try {
-          const messagesResponse = await conversationAPI.getMessages(conversationId);
-          const latestMessage = messagesResponse.messages[messagesResponse.messages.length - 1];
+    // Send message in background (non-blocking)
+    (async () => {
+      try {
+        // Only proceed if still on the same conversation
+        if (conversationIdRef.current !== targetConversationId) {
+          console.log('[EmailConversation] Conversation changed, canceling send for:', targetConversationId);
+          setSending(false);
+          return;
+        }
 
-          // Check if the latest message is from agent and is newer than our sent message
-          if (latestMessage && latestMessage.senderType === 'agent') {
-            const messageTime = new Date(latestMessage.createdAt).getTime();
-            const sentTime = new Date(response.message.createdAt).getTime();
+        setWaitingForAgent(true);
 
-            if (messageTime > sentTime) {
-              // Agent responded!
-              setMessages(messagesResponse.messages);
+        // Send the message to backend
+        const response = await conversationAPI.sendMessage(targetConversationId, messageText);
+
+        // Replace optimistic message with real message (ONLY if still on same conversation)
+        if (conversationIdRef.current === targetConversationId) {
+          setMessages((prev) => {
+            // Remove the optimistic message and add the real one
+            const filtered = prev.filter(m => m.id !== optimisticMessage.id);
+            return [...filtered, response.message];
+          });
+        } else {
+          console.log('[EmailConversation] Conversation changed after send, not updating messages');
+          setSending(false);
+          setWaitingForAgent(false);
+          return;
+        }
+
+        // Wait a bit for agent response to be generated
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Poll for agent response (check every 2 seconds, max 30 seconds)
+        let attempts = 0;
+        const maxAttempts = 15; // 15 attempts * 2 seconds = 30 seconds max
+
+        const checkForAgentResponse = async () => {
+          attempts++;
+
+          // Stop polling if conversation changed
+          if (conversationIdRef.current !== targetConversationId) {
+            console.log('[EmailConversation] Conversation changed, stopping poll for:', targetConversationId);
+            setWaitingForAgent(false);
+            return;
+          }
+
+          try {
+            const messagesResponse = await conversationAPI.getMessages(targetConversationId);
+            const latestMessage = messagesResponse.messages[messagesResponse.messages.length - 1];
+
+            // Check if the latest message is from agent and is newer than our sent message
+            if (latestMessage && latestMessage.senderType === 'agent') {
+              const messageTime = new Date(latestMessage.createdAt).getTime();
+              const sentTime = new Date(response.message.createdAt).getTime();
+
+              if (messageTime > sentTime) {
+                // Agent responded! Update messages only if still on same conversation
+                if (conversationIdRef.current === targetConversationId) {
+                  setMessages(messagesResponse.messages);
+                }
+                setWaitingForAgent(false);
+                return;
+              }
+            }
+
+            // If we haven't found agent response and haven't exceeded max attempts, check again
+            if (attempts < maxAttempts) {
+              setTimeout(checkForAgentResponse, 2000);
+            } else {
+              // Timeout - refresh conversation to get latest state (only if still on same conversation)
+              console.log('[EmailConversation] Timeout waiting for agent response, refreshing...');
+              if (conversationIdRef.current === targetConversationId) {
+                await loadConversation(true); // Use animation for refresh
+              }
               setWaitingForAgent(false);
-              return;
+            }
+          } catch (error) {
+            console.error('Error checking for agent response:', error);
+            if (attempts < maxAttempts && conversationIdRef.current === targetConversationId) {
+              setTimeout(checkForAgentResponse, 2000);
+            } else {
+              setWaitingForAgent(false);
             }
           }
+        };
 
-          // If we haven't found agent response and haven't exceeded max attempts, check again
-          if (attempts < maxAttempts) {
-            setTimeout(checkForAgentResponse, 2000);
-          } else {
-            // Timeout - refresh conversation to get latest state
-            console.log('[EmailConversation] Timeout waiting for agent response, refreshing...');
-            await loadConversation(true); // Use animation for refresh
-            setWaitingForAgent(false);
-          }
-        } catch (error) {
-          console.error('Error checking for agent response:', error);
-          if (attempts < maxAttempts) {
-            setTimeout(checkForAgentResponse, 2000);
-          } else {
-            setWaitingForAgent(false);
-          }
+        // Start checking for agent response
+        setTimeout(checkForAgentResponse, 2000);
+
+      } catch (error) {
+        console.error('Failed to send message:', error);
+        // Remove optimistic message on error (only if still on same conversation)
+        if (conversationIdRef.current === targetConversationId) {
+          setMessages((prev) => prev.filter(m => m.id !== optimisticMessage.id));
         }
-      };
-
-      // Start checking for agent response
-      setTimeout(checkForAgentResponse, 2000);
-
-    } catch (error) {
-      console.error('Failed to send message:', error);
-      setWaitingForAgent(false);
-    } finally {
-      setSending(false);
-    }
+        setWaitingForAgent(false);
+      } finally {
+        setSending(false);
+      }
+    })();
   };
 
   const toggleMessage = (messageId: string) => {
@@ -325,6 +392,7 @@ export function EmailConversation({ agent, conversationId, onUnreadChange, onVoi
         isOpen={isDownloadModalOpen}
         onClose={() => setIsDownloadModalOpen(false)}
         agent={agent}
+        conversationId={conversationId}
       />
 
       {/* Email Thread Messages */}

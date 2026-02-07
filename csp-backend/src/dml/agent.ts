@@ -6,6 +6,8 @@ type AgentCreateData = {
   description?: string | null;
   avatar?: string | null;
   systemPrompt?: string | null;
+  voice?: string | null;
+  voiceSpeed?: number | null;
   isActive?: boolean;
 };
 
@@ -14,6 +16,8 @@ type AgentUpdateData = {
   description?: string | null;
   avatar?: string | null;
   systemPrompt?: string | null;
+  voice?: string | null;
+  voiceSpeed?: number | null;
   isActive?: boolean;
   deletedAt?: Date | null;
 };

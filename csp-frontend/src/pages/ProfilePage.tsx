@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Save, Loader2, Moon, Sun, User, Pencil, Camera, Trash2, RotateCcw, CheckCircle, XCircle } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, Moon, Sun, User, Pencil, Trash2, RotateCcw, CheckCircle, XCircle } from 'lucide-react';
 import { DropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { cn } from '@/lib/utils';
 
@@ -46,12 +46,10 @@ export function ProfilePage() {
   };
 
   // avatarUrl state:
-  // - string (data:...) : Custom photo
-  // - "NONE"           : Explicitly removed (show placeholder)
-  // - null             : Default (use Google/Firebase photo)
+  // - "NONE" : Explicitly removed (show placeholder)
+  // - null   : Default (use Google/Firebase photo)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [isViewingLarge, setIsViewingLarge] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
 
   const [formData, setFormData] = useState({
@@ -93,31 +91,14 @@ export function ProfilePage() {
     return firebaseUser?.photoURL || null;
   }, [avatarUrl, firebaseUser?.photoURL]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setAvatarUrl(reader.result as string);
-        showToast('Photo uploaded! Click save to finish.');
-      };
-      reader.readAsDataURL(file);
-    }
-  };
 
   const removeAvatar = () => {
     setAvatarUrl("NONE"); // Explicit removal
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
     showToast('Photo removed! Click save to finish.');
   };
 
   const resetToDefault = () => {
     setAvatarUrl(null); // Back to default (Google/Firebase)
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
     showToast('Reset to default! Click save to finish.');
   };
 
@@ -208,11 +189,6 @@ export function ProfilePage() {
                   }
                   align="right"
                 >
-                  <DropdownMenuItem onClick={() => fileInputRef.current?.click()} className="cursor-pointer">
-                    <Camera className="h-4 w-4 mr-2" />
-                    Upload Photo
-                  </DropdownMenuItem>
-
                   {avatarUrl !== "NONE" && (
                     <DropdownMenuItem onClick={removeAvatar} className="cursor-pointer text-destructive">
                       <Trash2 className="h-4 w-4 mr-2" />
@@ -227,14 +203,6 @@ export function ProfilePage() {
                     </DropdownMenuItem>
                   )}
                 </DropdownMenu>
-
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileChange}
-                  className="hidden"
-                  accept="image/*"
-                />
               </div>
             </div>
 

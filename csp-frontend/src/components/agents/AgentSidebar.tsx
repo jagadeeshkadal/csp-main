@@ -1,4 +1,4 @@
-import { useState, useEffect, useImperativeHandle, forwardRef, useCallback } from 'react';
+import { useState, useEffect, useImperativeHandle, forwardRef, useCallback, useMemo } from 'react';
 import { agentAPI, conversationAPI } from '@/lib/api';
 import type { AIAgent } from '@/lib/api';
 import { Input } from '@/components/ui/input';
@@ -36,6 +36,7 @@ export const AgentSidebar = forwardRef<AgentSidebarRef, AgentSidebarProps>(
           setError(null);
           const response = await agentAPI.getAllAgents();
           setAgents(response.agents);
+          setAllAgents(response.agents); // Store all agents for filtering
         } catch (err: any) {
           console.error('Failed to fetch agents:', err);
           setError('Failed to load agents');
@@ -119,32 +120,23 @@ export const AgentSidebar = forwardRef<AgentSidebarRef, AgentSidebarProps>(
       return () => clearInterval(interval);
     }, [checkUnreadMessages]);
 
-    useEffect(() => {
-      const searchAgents = async () => {
-        if (searchTerm.trim() === '') {
-          const response = await agentAPI.getAllAgents();
-          setAgents(response.agents);
-          return;
-        }
+    // Store all agents fetched from backend
+    const [allAgents, setAllAgents] = useState<AIAgent[]>([]);
 
-        try {
-          setLoading(true);
-          const response = await agentAPI.searchAgents(searchTerm);
-          setAgents(response.agents);
-        } catch (err: any) {
-          console.error('Failed to search agents:', err);
-          setError('Failed to search agents');
-        } finally {
-          setLoading(false);
-        }
-      };
+    // Filtered agents based on search term (client-side filtering)
+    const filteredAgents = useMemo(() => {
+      if (searchTerm.trim() === '') {
+        return allAgents;
+      }
 
-      const debounceTimer = setTimeout(() => {
-        searchAgents();
-      }, 300);
-
-      return () => clearTimeout(debounceTimer);
-    }, [searchTerm]);
+      const lowerSearch = searchTerm.toLowerCase();
+      return allAgents.filter(agent => {
+        // Split agent name into words (by spaces, &, and other separators)
+        const words = agent.name.toLowerCase().split(/[\s&]+/);
+        // Check if any word starts with the search term
+        return words.some(word => word.startsWith(lowerSearch));
+      });
+    }, [allAgents, searchTerm]);
 
     return (
       <div className="w-full md:w-80 bg-background flex flex-col h-full overflow-hidden">
@@ -173,15 +165,15 @@ export const AgentSidebar = forwardRef<AgentSidebarRef, AgentSidebarProps>(
             <div className="p-2">
               {(() => {
                 // Separate agents into active conversations and all agents
-                const agentsWithConversations = agents.filter(agent => {
+                const agentsWithConversations = filteredAgents.filter(agent => {
                   const hasConversation = conversations.has(agent.id);
                   // Only show active agents with conversations
                   return hasConversation && agent.isActive;
                 });
 
-                const allAgentsList = agents.filter(agent => agent.isActive);
+                const allAgentsList = filteredAgents.filter(agent => agent.isActive);
 
-                const renderAgentItem = (agent: typeof agents[0]) => {
+                const renderAgentItem = (agent: typeof filteredAgents[0]) => {
                   const conversationId = conversations.get(agent.id);
                   const isPinned = pinnedAgents.has(agent.id);
                   const hasUnread = unreadAgents.has(agent.id);
@@ -231,7 +223,7 @@ export const AgentSidebar = forwardRef<AgentSidebarRef, AgentSidebarProps>(
                         <div className="absolute right-2 top-1/2 -translate-y-1/2 z-10">
                           {/* Unread indicator - always visible, positioned above dropdown button */}
                           {hasUnread && (
-                            <div className="absolute -top-1.5 right-0.5 w-2 h-2 rounded-full bg-primary flex-shrink-0 z-20" title="Unread messages" />
+                            <div className="absolute -top-1.5 right-0.5 w-2 h-2 rounded-full bg-blue-500 flex-shrink-0 z-20" title="Unread messages" />
                           )}
                           {/* Dropdown Menu - Show on hover */}
                           <div

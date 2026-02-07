@@ -32,7 +32,11 @@ export function HomePage() {
   const [loading, setLoading] = useState(true);
   const [selectedAgent, setSelectedAgent] = useState<AIAgent | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
-  const [activeView, setActiveView] = useState<'home' | 'chats'>('home');
+  // Restore active view from localStorage, default to 'home' for first-time users
+  const [activeView, setActiveView] = useState<'home' | 'chats'>(() => {
+    const saved = localStorage.getItem('activeView');
+    return (saved === 'home' || saved === 'chats') ? saved : 'home';
+  });
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isVoiceOpen, setIsVoiceOpen] = useState(false);
   const navigate = useNavigate();
@@ -136,6 +140,7 @@ export function HomePage() {
 
   const handleMobileViewChange = (view: 'home' | 'chats') => {
     setActiveView(view);
+    localStorage.setItem('activeView', view); // Save to localStorage
     if (view === 'chats') {
       if (selectedAgentRef.current) {
         window.history.back();
@@ -222,7 +227,10 @@ export function HomePage() {
         <LeftNavbar
           ref={leftNavbarRef}
           activeView={activeView}
-          onViewChange={setActiveView}
+          onViewChange={(view) => {
+            setActiveView(view);
+            localStorage.setItem('activeView', view);
+          }}
           className="hidden md:flex">
           {activeView === 'chats' && (
             <AgentSidebar

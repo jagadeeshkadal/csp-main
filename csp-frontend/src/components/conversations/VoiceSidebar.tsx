@@ -883,7 +883,7 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
             >
               <Settings className="h-5 w-5" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={onClose}>
+            <Button variant="ghost" size="icon" onClick={() => showSettings ? setShowSettings(false) : onClose()}>
               <X className="h-5 w-5" />
             </Button>
           </div>
@@ -892,12 +892,13 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
 
       {/* Settings Panel - Overlay */}
       {showSettings && (
-        <div className="border-b bg-secondary/20 p-4 space-y-4 animate-in slide-in-from-top-2 duration-200">
+        <div className="border-b bg-[hsl(36,95%,30%)] p-4 space-y-4 animate-in slide-in-from-top-2 duration-200 text-white shadow-lg">
           <div className="flex items-center justify-between">
             <label className="text-sm font-medium">Automatic Noise Sensitivity</label>
             <Switch
               checked={autoSensitivity}
               onCheckedChange={setAutoSensitivity}
+              className="data-[state=checked]:bg-white data-[state=unchecked]:bg-black/20 [&>span]:bg-white"
             />
           </div>
 
@@ -911,6 +912,7 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
             <Switch
               checked={bargeInEnabled}
               onCheckedChange={setBargeInEnabled}
+              className="data-[state=checked]:bg-white data-[state=unchecked]:bg-black/20 [&>span]:bg-white"
             />
           </div>
 
@@ -957,13 +959,13 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
                 step="0.1"
                 value={inputGain}
                 onChange={(e) => setInputGain(parseFloat(e.target.value))}
-                className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer
+                className="w-full h-2 bg-black/20 rounded-lg appearance-none cursor-pointer
                     [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 
-                    [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary
+                    [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white
                     [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 
-                    [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:border-0"
+                    [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-0"
               />
-              <p className="text-[10px] text-muted-foreground">
+              <p className="text-[10px] text-white/80">
                 Adjust input volume if your microphone is too quiet or too loud.
               </p>
             </div>
@@ -1200,17 +1202,17 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
           <div className="mt-4 px-4 min-h-[80px] max-h-[120px] overflow-y-auto">
             {/* User's speech (real-time) */}
             {interimTranscript && (
-              <div className="mb-2 p-3 bg-primary/10 rounded-lg border border-primary/20">
-                <p className="text-xs text-muted-foreground mb-1">You:</p>
-                <p className="text-sm text-foreground italic">{interimTranscript}</p>
+              <div className="mb-2 p-3 bg-zinc-800 rounded-lg border border-zinc-700">
+                <p className="text-xs text-zinc-400 mb-1">You:</p>
+                <p className="text-sm text-white italic">{interimTranscript}</p>
               </div>
             )}
 
             {/* AI's response */}
             {isPlayingAudio && lastAgentResponse && (
-              <div className="mb-2 p-3 bg-secondary/50 rounded-lg border border-border">
-                <p className="text-xs text-muted-foreground mb-1">{agent?.name || 'AI'}:</p>
-                <p className="text-sm text-foreground">{lastAgentResponse}</p>
+              <div className="mb-2 p-3 bg-zinc-800 rounded-lg border border-zinc-700">
+                <p className="text-xs text-zinc-400 mb-1">{agent?.name || 'AI'}:</p>
+                <p className="text-sm text-white">{lastAgentResponse}</p>
               </div>
             )}
 
@@ -1225,7 +1227,7 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
       </div>
 
       {/* Call Controls */}
-      <div className="border-t p-4 space-y-2">
+      <div className="border-t p-4 space-y-2 relative z-50 bg-card">
         {!isSpeechSupported ? (
           <div className="text-center text-sm text-destructive">
             Speech recognition is not supported in your browser.

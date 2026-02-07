@@ -19,7 +19,7 @@ export interface LeftNavbarRef {
 
 export const LeftNavbar = forwardRef<LeftNavbarRef, LeftNavbarProps>(
   ({ activeView, onViewChange, children, className, isMobile, onMobileClose }, ref) => {
-    const [isCollapsed, setIsCollapsed] = useState(isMobile ? false : true);
+    const isCollapsed = true; // Always collapsed (icon-only mode)
     const [unreadCount, setUnreadCount] = useState(0);
 
     const checkUnreadMessages = useCallback(async () => {
@@ -79,34 +79,6 @@ export const LeftNavbar = forwardRef<LeftNavbarRef, LeftNavbarProps>(
           "border-r bg-card flex flex-col transition-all duration-300 flex-shrink-0",
           isMobile ? "w-full" : (isCollapsed ? "w-20" : "w-64")
         )}>
-          {/* Toggle Button */}
-          <div className={cn(
-            "p-3 border-b flex items-center",
-            isCollapsed && !isMobile ? "justify-center" : "justify-between"
-          )}>
-            {!isCollapsed && !isMobile && <span className="text-sm font-semibold">Menu</span>}
-            {isMobile && <span className="text-sm font-semibold">Menu</span>}
-
-            {!isMobile ? (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsCollapsed(!isCollapsed)}
-                className="h-8 w-8"
-              >
-                <Menu className="h-5 w-5" />
-              </Button>
-            ) : (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={onMobileClose}
-                className="h-8 w-8"
-              >
-                <Menu className="h-5 w-5" />
-              </Button>
-            )}
-          </div>
 
           {/* Navigation Items */}
           <div className="flex-1 py-2">

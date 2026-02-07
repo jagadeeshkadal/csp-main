@@ -33,6 +33,7 @@ function AuthPageContent() {
           await authAPI.getCurrentUser();
           console.log('[AuthPage] Token verified, redirecting to home');
           // If successful, user is authenticated, redirect to home
+          // This only happens when user lands on auth page with valid token
           navigate('/home', { replace: true });
           return;
         } catch (error: any) {
