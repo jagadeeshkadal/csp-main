@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-route
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { GoogleSignIn } from '@/components/auth/GoogleSignIn';
 import { PhoneNumberForm } from '@/components/auth/PhoneNumberForm';
+import { CorporateLayout } from '@/components/auth/CorporateLayout';
 import { HomePage } from '@/pages/HomePage';
 import { ProfilePage } from '@/pages/ProfilePage';
 import { getCurrentUser as getFirebaseUser, getIdToken } from '@/lib/firebase';
@@ -24,7 +25,7 @@ function AuthPageContent() {
     const checkAuth = async () => {
       const token = getAuthToken();
       console.log('[AuthPage] checkAuth called, token exists:', !!token);
-      
+
       // If token exists, try to verify it with backend
       if (token) {
         try {
@@ -43,7 +44,7 @@ function AuthPageContent() {
           localStorage.removeItem('user');
         }
       }
-      
+
       // Don't auto-redirect based on Firebase user alone - they need to complete signup
       // Only redirect if they have a valid backend token
       console.log('[AuthPage] No valid token, showing login page');
@@ -71,13 +72,13 @@ function AuthPageContent() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    <CorporateLayout step={step}>
       {step === 'signin' ? (
         <GoogleSignIn onSuccess={handleSuccess} onSignUp={handleSignUp} />
       ) : firebaseToken ? (
         <PhoneNumberForm token={firebaseToken} onSuccess={handleSuccess} />
       ) : null}
-    </div>
+    </CorporateLayout>
   );
 }
 
@@ -97,7 +98,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     const checkAuth = async () => {
       const storedToken = getAuthToken();
       console.log('[ProtectedRoute] Checking auth, token exists:', !!storedToken);
-      
+
       // If token exists in localStorage, try to fetch user data from backend
       if (storedToken) {
         try {
@@ -113,7 +114,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
             status: error.response?.status,
             message: error.response?.data?.message || error.message,
           });
-          
+
           // Token is invalid, clear it
           console.error('[ProtectedRoute] Token invalid, clearing and denying access');
           localStorage.removeItem('authToken');
@@ -123,7 +124,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
           return;
         }
       }
-      
+
       // No token - user is not authenticated
       console.log('[ProtectedRoute] No token found, user not authenticated');
       setIsAuthenticated(false);

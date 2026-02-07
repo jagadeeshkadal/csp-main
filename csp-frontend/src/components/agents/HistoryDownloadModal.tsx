@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { exportChatHistoryToPdf } from '@/lib/historyExport';
-import { conversationAPI, type AIAgent, type EmailConversation } from '@/lib/api';
+import { conversationAPI, voiceAPI, type AIAgent, type EmailConversation, type VoiceExchange } from '@/lib/api';
 import { Download, Loader2, FileText, AlertCircle } from 'lucide-react';
 
 interface HistoryDownloadModalProps {
@@ -23,18 +23,59 @@ export function HistoryDownloadModal({
         try {
             setIsDownloading(true);
 
+            // Get standard email conversations
             const response = await conversationAPI.getConversations();
             const conversation = response.conversations.find(c => c.agentId === agent.id);
 
             let conversationsToExport: EmailConversation[] = [];
 
             if (conversation) {
-                if (!conversation.messages || conversation.messages.length === 0) {
-                    const fullConv = await conversationAPI.getConversation(conversation.id);
-                    conversationsToExport = [fullConv.conversation];
-                } else {
-                    conversationsToExport = [conversation];
+                // Always fetch full conversation details to ensure we have all messages
+                // getConversations() might only return a preview or limited messages
+                const convResponse = await conversationAPI.getConversation(conversation.id);
+                let fullConv = convResponse.conversation;
+
+                // Fetch voice exchanges
+                try {
+                    const voiceResponse = await voiceAPI.getVoiceExchanges(fullConv.id);
+                    const voiceExchanges = voiceResponse.exchanges || [];
+
+                    if (voiceExchanges.length > 0) {
+                        const voiceMessages: any[] = [];
+
+                        voiceExchanges.forEach((exchange: VoiceExchange) => {
+                            // User part
+                            voiceMessages.push({
+                                id: `voice-user-${exchange.id}`,
+                                conversationId: exchange.conversationId,
+                                senderType: 'user',
+                                content: `[Voice Transcript] ${exchange.userTranscript}`,
+                                isRead: true,
+                                createdAt: exchange.createdAt,
+                                updatedAt: exchange.createdAt
+                            });
+
+                            // Agent part
+                            voiceMessages.push({
+                                id: `voice-agent-${exchange.id}`,
+                                conversationId: exchange.conversationId,
+                                senderType: 'agent',
+                                content: `[Voice Response] ${exchange.agentResponse}`,
+                                isRead: true,
+                                createdAt: exchange.createdAt, // Same timestamp
+                                updatedAt: exchange.createdAt
+                            });
+                        });
+
+                        // Merge standard messages with voice messages
+                        fullConv.messages = [...(fullConv.messages || []), ...voiceMessages];
+                    }
+                } catch (error) {
+                    console.error('Failed to fetch voice exchanges:', error);
+                    // Continue even if voice fetch fails
                 }
+
+                conversationsToExport = [fullConv];
             }
 
             if (conversationsToExport.length === 0) {

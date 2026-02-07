@@ -40,6 +40,8 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
   const hasDetectedWordsRef = useRef<boolean>(false);
   const interimTranscriptRef = useRef<string>('');
   const isRecordingRef = useRef<boolean>(false);
+  const isHoldActiveRef = useRef<boolean>(false);
+  const ignoreUnmuteEchoRef = useRef<boolean>(false); // Ref to ignore input immediately after unmuting to prevent echo
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const microphoneRef = useRef<MediaStreamAudioSourceNode | null>(null);
@@ -47,6 +49,7 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
   const animationFrameRef = useRef<number | null>(null);
   const wasPlayingBeforeHoldRef = useRef<boolean>(false);
   const isMutedRef = useRef<boolean>(false);
+  const audioLevelRef = useRef<number>(0);
 
   // Handle audio playback when currentAudio changes - play immediately
   useEffect(() => {
@@ -225,8 +228,13 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
         recognition.lang = 'en-US';
 
         recognition.onresult = (event: any) => {
-          // If muted, ignore all input to prevent self-interruption or noise
-          if (isMutedRef.current) return;
+          // If muted OR hold is active OR we are suppressing echo after unmute
+          if (isMutedRef.current || isHoldActiveRef.current || ignoreUnmuteEchoRef.current) {
+            if (ignoreUnmuteEchoRef.current) {
+              console.log('[VoiceSidebar] 🛡️ Ignoring result due to unmute echo suppression');
+            }
+            return;
+          }
 
           let finalTranscript = '';
           let interim = '';
@@ -247,7 +255,7 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
           setInterimTranscript(interim);
           interimTranscriptRef.current = interim; // Keep ref in sync for audio interruption checks
 
-          // If user is speaking, interrupt any playing audio immediately
+          // If user is speaking strings, interrupt any playing audio immediately
           if (interim.trim()) {
             // Force stop audio if playing - do this immediately
             if (audioRef.current) {
@@ -297,7 +305,6 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
             }
           }
 
-          // If words are detected (interim or final), clear the no-words timer
           if (interim.trim() || finalTranscript.trim()) {
             hasDetectedWordsRef.current = true;
             // Clear any existing timer since words are being detected
@@ -305,11 +312,10 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
               clearTimeout(noWordsTimeoutRef.current);
               noWordsTimeoutRef.current = null;
             }
-            console.log('[VoiceSidebar] 📝 Words detected - interim:', interim.trim(), 'final:', finalTranscript.trim());
           } else {
             // No words detected in this result - if we previously detected words, start timer to send
             if (hasDetectedWordsRef.current && !noWordsTimeoutRef.current) {
-              console.log('[VoiceSidebar] 🔇 No words detected, starting 2s timer to send...');
+              console.log('[VoiceSidebar] 🔇 No words detected, starting 1.5s timer to send...');
               resetNoWordsTimer();
             }
           }
@@ -318,12 +324,9 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
         recognition.onerror = (event: any) => {
           console.error('[VoiceSidebar] ❌ Speech recognition error:', event.error);
           if (event.error === 'no-speech') {
-            // No speech detected - check if we should send
             checkNoWordsAndSend();
           } else if (event.error === 'aborted') {
-            // Do NOT restart on aborted - this causes infinite loops
-            console.log('[VoiceSidebar] 🛑 Recognition aborted - stopping restart loop');
-            return;
+            console.log('[VoiceSidebar] 🛑 Recognition aborted');
           } else if (isRecordingRef.current) {
             // Restart if still recording (continuous listening)
             setTimeout(() => {
@@ -341,20 +344,31 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
 
         recognition.onend = () => {
           console.log('[VoiceSidebar] 🛑 Speech recognition ended');
-          // Only restart if still recording AND no aborted error
-          // Use ref to check isRecording to avoid stale closure
+
+          // CRITICAL: Aggressive restart logic
+          // Only restart if call is active (isRecordingRef)
           if (isRecordingRef.current && conversationId) {
-            setTimeout(() => {
-              // Check again before restarting using ref
-              if (isRecordingRef.current && recognitionRef.current) {
-                try {
-                  recognitionRef.current.start();
-                  console.log('[VoiceSidebar] ✅ Speech recognition restarted (continuous listening)');
-                } catch (e) {
-                  console.log('[VoiceSidebar] Recognition already started or error:', e);
-                }
+            console.log('[VoiceSidebar] 🔄 Auto-restarting recognition immediately...');
+
+            // Immediate restart attempt without delay
+            if (recognitionRef.current) {
+              try {
+                recognitionRef.current.start();
+                console.log('[VoiceSidebar] ✅ recognition.start() called successfully');
+              } catch (e: any) {
+                // If it fails (e.g. "already started"), that's fine, but log it
+                console.log('[VoiceSidebar] Note: Start failed (probably already running):', e.message);
+
+                // Fallback: If it failed, try again in 100ms just in case it was "stopping"
+                setTimeout(() => {
+                  if (isRecordingRef.current && recognitionRef.current) {
+                    try {
+                      recognitionRef.current.start();
+                    } catch (retryErr) { /* ignore */ }
+                  }
+                }, 100);
               }
-            }, 100); // Reduced timeout to 100ms
+            }
           }
         };
 
@@ -390,10 +404,10 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
     if (noWordsTimeoutRef.current) {
       clearTimeout(noWordsTimeoutRef.current);
     }
-    // Set timer for 2 seconds of no words detected
+    // Set timer for 1.5 seconds (balanced for echo vs speed)
     noWordsTimeoutRef.current = setTimeout(() => {
       checkNoWordsAndSend();
-    }, 2000);
+    }, 1500);
   };
 
   const checkNoWordsAndSend = () => {
@@ -467,19 +481,37 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
     setIsMuted(newMutedState);
     isMutedRef.current = newMutedState;
 
-    // Mute/unmute the microphone track
-    if (streamRef.current) {
-      streamRef.current.getAudioTracks().forEach(track => {
-        track.enabled = !newMutedState;
-      });
+    // ECHO SUPPRESSION: If unmuting while AI is speaking, ignore input for a moment
+    if (!newMutedState && isPlayingAudio) {
+      console.log('[VoiceSidebar] 🛡️ Unmuting during playback - suppressing input for 1s to prevent echo');
+      ignoreUnmuteEchoRef.current = true;
+      setTimeout(() => {
+        ignoreUnmuteEchoRef.current = false;
+        console.log('[VoiceSidebar] 🛡️ Echo suppression ended');
+      }, 1000);
     }
 
-    console.log('[VoiceSidebar] 🎤 Microphone', newMutedState ? 'muted' : 'unmuted');
+    // RESTART STRATEGY: 
+    // When UNMUTING, we restart recognition to ensure the browser prioritizes microphone input again.
+    // This fixes the "deafness" issue where the first few words are missed.
+    if (!newMutedState && recognitionRef.current) {
+      console.log('[VoiceSidebar] 🔄 Unmuting - refreshing recognition session...');
+      try {
+        recognitionRef.current.stop();
+        // onend will accept the auto-restart because isRecordingRef is true
+      } catch (e) {
+        console.error('Error refreshing recognition:', e);
+      }
+    }
+
+    console.log('[VoiceSidebar] 🎤 Microphone', newMutedState ? 'soft muted' : 'unmuted');
+    console.log('[VoiceSidebar] 🎤 Microphone', newMutedState ? 'soft muted' : 'unmuted');
   };
 
   const handleHold = () => {
     const newHoldState = !isHoldActive;
     setIsHoldActive(newHoldState);
+    isHoldActiveRef.current = newHoldState; // Update ref
 
     if (newHoldState) {
       // HOLDING: Stop audio but remember if it was playing
@@ -494,30 +526,16 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
         wasPlayingBeforeHoldRef.current = false;
       }
 
-      // Mute the microphone
-      if (!isMuted && streamRef.current) {
-        setIsMuted(true);
-        isMutedRef.current = true;
-        streamRef.current.getAudioTracks().forEach(track => {
-          track.enabled = false;
-        });
-        console.log('[VoiceSidebar] 🎤 Hold pressed - muting microphone');
-      }
+      // Stop recognition/processing but DON'T change mute state
+      console.log('[VoiceSidebar] ⏸️ Call placed on hold');
 
       // Clear status text visually but don't reset everything
       if (statusText === 'speaking') {
         setStatusText(null);
       }
     } else {
-      // RESUMING: Unmute and potentially resume audio
-      if (isMuted && streamRef.current) {
-        setIsMuted(false);
-        isMutedRef.current = false;
-        streamRef.current.getAudioTracks().forEach(track => {
-          track.enabled = true;
-        });
-        console.log('[VoiceSidebar] 🎤 Hold released - unmuting microphone');
-      }
+      // RESUMING: Just log it, don't need to unmute
+      console.log('[VoiceSidebar] ▶️ Call resumed from hold');
 
       // Resume audio if it was playing before
       if (wasPlayingBeforeHoldRef.current && audioRef.current && currentAudio) {
@@ -625,10 +643,11 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
       });
       streamRef.current = stream;
 
-      // Apply mute state if already muted
-      if (isMuted) {
+      // Apply mute/hold state checks in visualization
+      if (isMuted || isHoldActive) {
         stream.getAudioTracks().forEach(track => {
-          track.enabled = false;
+          // We don't disable tracks anymore to keep connection alive
+          // track.enabled = false; 
         });
       }
 
@@ -657,10 +676,11 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
 
         analyserRef.current.getByteFrequencyData(dataArray);
 
-        // Calculate average volume (only if not muted)
-        const average = isMuted ? 0 : dataArray.reduce((sum, value) => sum + value, 0) / dataArray.length;
+        // Calculate average volume (only if not muted AND not on hold)
+        const average = (isMuted || isHoldActive) ? 0 : dataArray.reduce((sum, value) => sum + value, 0) / dataArray.length;
         const normalizedLevel = Math.min(average / 128, 1); // Normalize to 0-1
 
+        audioLevelRef.current = normalizedLevel; // Keep ref in sync for onresult
         setAudioLevel(normalizedLevel);
 
         animationFrameRef.current = requestAnimationFrame(updateAudioLevel);
@@ -971,15 +991,24 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
           })()}
         </div>
 
-        {/* Status Text Indicator - Below the circular visualizer */}
-        {statusText && (
-          <div className="mt-4 text-center">
-            <span className="text-lg font-medium text-foreground status-glow">
-              {statusText === 'listening' && 'listening...'}
-              {statusText === 'thinking' && 'thinking...'}
-              {statusText === 'researching' && 'researching...'}
-              {statusText === 'speaking' && 'speaking'}
-            </span>
+        {/* Status Text Indicator - RESTORED under visualizer */}
+        <div className="mt-6 text-center h-6">
+          {/* Dynamic Status */}
+          {isCallActive && (
+            <p className="text-sm font-medium transition-all duration-300">
+              {statusText === 'speaking' ? "Speaking..." :
+                isHoldActive ? "Call on hold" :
+                  isMuted ? "Microphone muted" :
+                    (statusText === 'thinking' || statusText === 'researching') ? "Thinking..." :
+                      statusText === 'listening' ? "Listening..." :
+                        "Ready"}
+            </p>
+          )}
+        </div>
+
+        {/* Status Text & Controls - Spacer only */}
+        {isCallActive && (
+          <div className="text-center space-y-4 pt-1">
           </div>
         )}
 
@@ -1087,6 +1116,6 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
           </>
         )}
       </div>
-    </div>
+    </div >
   );
 }

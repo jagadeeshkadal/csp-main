@@ -89,7 +89,7 @@ export function PhoneNumberForm({ token, onSuccess }: PhoneNumberFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!phoneNumber.trim()) {
       setError('Phone number is required');
       return;
@@ -187,7 +187,7 @@ export function PhoneNumberForm({ token, onSuccess }: PhoneNumberFormProps) {
                   </div>
                 )}
               </div>
-              
+
               {/* Phone Number Input */}
               <Input
                 id="phone"
@@ -204,7 +204,7 @@ export function PhoneNumberForm({ token, onSuccess }: PhoneNumberFormProps) {
               Select your country code and enter your phone number
             </p>
           </div>
-          
+
           {error && (
             <p className="text-sm text-destructive">{error}</p>
           )}
