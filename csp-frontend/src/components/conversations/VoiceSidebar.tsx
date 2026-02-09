@@ -780,13 +780,6 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
             threshold,
             isAuto: autoSensitivityRef.current
           });
-        } else if (normalizedLevel > 0.05) {
-          // Debug logging for why it might not be triggering
-          // console.log('[VoiceSidebar] 📉 Audio level below threshold:', {
-          //    level: normalizedLevel,
-          //    threshold,
-          //    isAuto: autoSensitivityRef.current
-          // });
         }
         setAudioLevel(normalizedLevel);
 
