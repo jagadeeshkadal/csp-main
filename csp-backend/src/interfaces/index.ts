@@ -16,6 +16,7 @@ export interface IAIAgent {
   id: string;
   name: string;
   description?: string | null;
+  location?: string | null;
   avatar?: string | null;
   systemPrompt?: string | null;
   voice?: string | null;

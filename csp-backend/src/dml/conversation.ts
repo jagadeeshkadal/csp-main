@@ -73,7 +73,14 @@ const getConversationById = async (id: string): Promise<IEmailConversation | nul
 
 const getConversationsByUserId = async (userId: string): Promise<IEmailConversation[]> => {
   const conversations = await prisma.emailConversation.findMany({
-    where: { userId, deletedAt: null },
+    where: {
+      userId,
+      deletedAt: null,
+      // Restore agent check to prevent errors with orphaned records
+      agent: {
+        is: {}
+      }
+    },
     include: {
       agent: true,
       messages: {

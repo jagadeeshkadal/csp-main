@@ -56,6 +56,8 @@ export function ProfilePage() {
     name: '',
     email: '',
     phoneExtension: '',
+    teamNumber: '',
+    departmentName: '',
   });
 
   useEffect(() => {
@@ -70,10 +72,9 @@ export function ProfilePage() {
           name: response.user.name || '',
           email: response.user.email || '',
           phoneExtension: response.user.phoneExtension || '',
+          teamNumber: response.user.teamNumber || '',
+          departmentName: response.user.departmentName || '',
         });
-
-        // Initialize avatarUrl from backend
-        setAvatarUrl(response.user.avatar || null);
       } catch (error) {
         console.error('Failed to fetch user data:', error);
         navigate('/', { replace: true });
@@ -85,24 +86,6 @@ export function ProfilePage() {
     fetchUserData();
   }, [navigate]);
 
-  const displayAvatarUrl = useMemo(() => {
-    if (avatarUrl === "NONE") return null;
-    if (avatarUrl) return avatarUrl;
-    return firebaseUser?.photoURL || null;
-  }, [avatarUrl, firebaseUser?.photoURL]);
-
-
-  const removeAvatar = () => {
-    setAvatarUrl("NONE"); // Explicit removal
-    showToast('Photo removed! Click save to finish.');
-  };
-
-  const resetToDefault = () => {
-    setAvatarUrl(null); // Back to default (Google/Firebase)
-    showToast('Reset to default! Click save to finish.');
-  };
-
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -112,7 +95,9 @@ export function ProfilePage() {
         name: formData.name || null,
         email: formData.email || null,
         phoneExtension: formData.phoneExtension,
-        avatar: avatarUrl, // Sends "NONE", data:..., or null
+        teamNumber: formData.teamNumber || null,
+        departmentName: formData.departmentName || null,
+        avatar: null, // Always null
       });
 
       setUserData(response.user);
@@ -158,51 +143,10 @@ export function ProfilePage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {/* Profile Picture Display */}
+            {/* Profile Picture Display - Static Default Icon */}
             <div className="flex flex-col items-center mb-10">
-              <div className="relative">
-                <div
-                  className="w-32 h-32 rounded-full overflow-hidden border-2 border-border shadow-lg cursor-pointer transition-all duration-300 hover:scale-105 active:scale-95 flex items-center justify-center bg-muted"
-                  onClick={() => setIsViewingLarge(true)}
-                >
-                  {displayAvatarUrl ? (
-                    <img
-                      src={displayAvatarUrl}
-                      alt={userData?.name || firebaseUser?.displayName || 'User'}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <User className="h-16 w-16 text-zinc-500" />
-                  )}
-
-                </div>
-
-                {/* Pencil Button with Custom Dropdown Menu */}
-                <DropdownMenu
-                  trigger={
-                    <button
-                      className="absolute bottom-1 right-1 bg-zinc-100 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 p-2 rounded-full shadow-lg hover:scale-110 active:scale-95 transition-all flex items-center justify-center border-2 border-background z-10"
-                      title="Edit Profile Picture"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                  }
-                  align="right"
-                >
-                  {avatarUrl !== "NONE" && (
-                    <DropdownMenuItem onClick={removeAvatar} className="cursor-pointer text-destructive">
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Remove Photo
-                    </DropdownMenuItem>
-                  )}
-
-                  {avatarUrl !== null && (
-                    <DropdownMenuItem onClick={resetToDefault} className="cursor-pointer">
-                      <RotateCcw className="h-4 w-4 mr-2" />
-                      Use Default
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenu>
+              <div className="w-32 h-32 rounded-full flex items-center justify-center bg-zinc-200 dark:bg-zinc-600 shadow-lg">
+                <User className="h-16 w-16 text-zinc-900 dark:text-zinc-100" />
               </div>
             </div>
 
@@ -246,8 +190,32 @@ export function ProfilePage() {
                   </p>
                 </div>
 
+                <div className="space-y-2">
+                  <Label htmlFor="teamNumber" className="text-sm font-semibold">Team Number</Label>
+                  <Input
+                    id="teamNumber"
+                    type="number"
+                    value={formData.teamNumber}
+                    onChange={(e) => setFormData({ ...formData, teamNumber: e.target.value })}
+                    placeholder="Enter your team number"
+                    className="h-11 shadow-sm"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="departmentName" className="text-sm font-semibold">Department Name</Label>
+                  <Input
+                    id="departmentName"
+                    type="text"
+                    value={formData.departmentName}
+                    onChange={(e) => setFormData({ ...formData, departmentName: e.target.value })}
+                    placeholder="Enter your department name"
+                    className="h-11 shadow-sm"
+                  />
+                </div>
 
               </div>
+
 
               <div className="space-y-2 pt-6 border-t mt-4">
                 <div className="flex items-center justify-between p-4 rounded-xl border border-border dark:border-white/20 bg-muted/20">
@@ -299,40 +267,6 @@ export function ProfilePage() {
           </CardContent>
         </Card>
       </div>
-
-      {/* Large Image Modal - Instagram Style */}
-      {isViewingLarge && (
-        <div
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-4 animate-in fade-in duration-300"
-          onClick={() => setIsViewingLarge(false)}
-        >
-          {/* Back Button */}
-          <button
-            className="absolute top-6 left-6 text-white hover:text-white/70 transition-colors p-2 z-20"
-            onClick={() => setIsViewingLarge(false)}
-          >
-            <ArrowLeft className="h-8 w-8" />
-          </button>
-
-          {/* Image Container - Constraint size like Instagram */}
-          <div
-            className="relative w-full max-w-sm md:max-w-md lg:max-w-lg aspect-square flex items-center justify-center"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {displayAvatarUrl ? (
-              <img
-                src={displayAvatarUrl}
-                alt="Profile Large"
-                className="max-w-full max-h-[70vh] w-auto h-auto object-contain rounded-lg shadow-2xl ring-1 ring-white/10"
-              />
-            ) : (
-              <div className="w-64 h-64 md:w-80 md:h-80 bg-white/10 rounded-full flex items-center justify-center ring-2 ring-white/10 shadow-2xl">
-                <User className="h-32 w-32 md:h-48 md:w-48 text-white/20" />
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Custom Toast - Top Right (Mobile), Bottom Right (Desktop) */}
       {toast.visible && (

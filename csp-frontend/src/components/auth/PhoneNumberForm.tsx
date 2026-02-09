@@ -2,69 +2,32 @@ import { useState, useEffect, useRef } from 'react';
 import { authAPI } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { ChevronDown } from 'lucide-react';
 
 interface PhoneNumberFormProps {
   token: string;
+  avatar?: string | null;
   onSuccess: () => void;
 }
 
 // Common country codes
 const countryCodes = [
-  { code: '+1', country: 'US/Canada' },
   { code: '+91', country: 'India' },
+  { code: '+1', country: 'US/Canada' },
   { code: '+44', country: 'UK' },
   { code: '+61', country: 'Australia' },
   { code: '+86', country: 'China' },
   { code: '+81', country: 'Japan' },
   { code: '+49', country: 'Germany' },
   { code: '+33', country: 'France' },
-  { code: '+39', country: 'Italy' },
-  { code: '+34', country: 'Spain' },
-  { code: '+31', country: 'Netherlands' },
-  { code: '+46', country: 'Sweden' },
-  { code: '+47', country: 'Norway' },
-  { code: '+45', country: 'Denmark' },
-  { code: '+41', country: 'Switzerland' },
-  { code: '+32', country: 'Belgium' },
-  { code: '+351', country: 'Portugal' },
-  { code: '+353', country: 'Ireland' },
-  { code: '+358', country: 'Finland' },
-  { code: '+48', country: 'Poland' },
-  { code: '+7', country: 'Russia/Kazakhstan' },
-  { code: '+82', country: 'South Korea' },
-  { code: '+65', country: 'Singapore' },
-  { code: '+60', country: 'Malaysia' },
-  { code: '+66', country: 'Thailand' },
-  { code: '+84', country: 'Vietnam' },
-  { code: '+62', country: 'Indonesia' },
-  { code: '+63', country: 'Philippines' },
-  { code: '+64', country: 'New Zealand' },
-  { code: '+27', country: 'South Africa' },
-  { code: '+55', country: 'Brazil' },
-  { code: '+52', country: 'Mexico' },
-  { code: '+54', country: 'Argentina' },
-  { code: '+971', country: 'UAE' },
-  { code: '+966', country: 'Saudi Arabia' },
-  { code: '+974', country: 'Qatar' },
-  { code: '+965', country: 'Kuwait' },
-  { code: '+973', country: 'Bahrain' },
-  { code: '+968', country: 'Oman' },
-  { code: '+961', country: 'Lebanon' },
-  { code: '+20', country: 'Egypt' },
-  { code: '+90', country: 'Turkey' },
-  { code: '+92', country: 'Pakistan' },
-  { code: '+880', country: 'Bangladesh' },
-  { code: '+94', country: 'Sri Lanka' },
-  { code: '+95', country: 'Myanmar' },
-  { code: '+977', country: 'Nepal' },
 ];
 
-export function PhoneNumberForm({ token, onSuccess }: PhoneNumberFormProps) {
+export function PhoneNumberForm({ token, avatar, onSuccess }: PhoneNumberFormProps) {
   const [countryCode, setCountryCode] = useState('+91');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [teamNumber, setTeamNumber] = useState('');
+  const [departmentName, setDepartmentName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showCountryDropdown, setShowCountryDropdown] = useState(false);
@@ -95,6 +58,11 @@ export function PhoneNumberForm({ token, onSuccess }: PhoneNumberFormProps) {
       return;
     }
 
+    if (phoneNumber.length !== 10) {
+      setError('Phone number must be exactly 10 digits');
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -105,6 +73,9 @@ export function PhoneNumberForm({ token, onSuccess }: PhoneNumberFormProps) {
       const response = await authAPI.ssoSignup({
         token,
         phoneNumber: formattedPhone,
+        teamNumber: teamNumber || undefined,
+        departmentName: departmentName || undefined,
+        avatar: avatar || undefined,
       });
 
       // Ensure token is stored before navigating
@@ -128,8 +99,6 @@ export function PhoneNumberForm({ token, onSuccess }: PhoneNumberFormProps) {
         console.log('[PhoneNumberForm] Token verified successfully');
       } catch (error: any) {
         console.error('[PhoneNumberForm] Token verification failed:', error);
-        // Don't throw - the token might just need a moment to be valid
-        // But log it for debugging
       }
 
       // Small delay to ensure everything is ready
@@ -145,29 +114,33 @@ export function PhoneNumberForm({ token, onSuccess }: PhoneNumberFormProps) {
   };
 
   return (
-    <Card className="w-full max-w-md mx-auto">
-      <CardHeader>
-        <CardTitle>Complete Your Profile</CardTitle>
-        <CardDescription>Please provide your phone number to continue</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="w-full bg-transparent p-6 flex items-center justify-end h-full">
+      <div className="w-full h-full bg-zinc-900/40 backdrop-blur-xl border border-zinc-700/30 rounded-3xl p-8 shadow-2xl animate-in fade-in zoom-in-95 duration-500 flex flex-col items-center justify-center overflow-auto">
+        <h2 className="text-[2.5rem] leading-[1.1] font-normal text-white mb-4 tracking-normal self-start w-full text-left">
+          Complete Profile
+        </h2>
+        <p className="text-zinc-400 text-lg font-light tracking-wide mb-8 leading-relaxed self-start w-full text-left">
+          Please provide additional details to continue.
+        </p>
+
+        <form onSubmit={handleSubmit} className="w-full space-y-5">
+          {/* Phone Number Section */}
           <div className="space-y-2">
-            <Label htmlFor="phone">Phone Number</Label>
+            <Label htmlFor="phone" className="text-zinc-300">Phone Number (10 digits)</Label>
             <div className="flex gap-2">
               {/* Country Code Dropdown */}
               <div className="relative flex-shrink-0" ref={dropdownRef}>
                 <button
                   type="button"
                   onClick={() => setShowCountryDropdown(!showCountryDropdown)}
-                  className="flex items-center justify-between w-24 h-10 px-3 border border-input bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center justify-between w-24 h-12 px-3 border border-zinc-700 bg-zinc-800/50 text-white rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-zinc-800"
                   disabled={loading}
                 >
                   <span>{countryCode}</span>
                   <ChevronDown className="h-4 w-4 opacity-50" />
                 </button>
                 {showCountryDropdown && (
-                  <div className="absolute z-50 mt-1 w-64 max-h-60 overflow-auto rounded-md border bg-background shadow-lg">
+                  <div className="absolute z-50 mt-1 w-64 max-h-60 overflow-auto rounded-xl border border-zinc-700 bg-zinc-900 shadow-xl">
                     <div className="p-1">
                       {countryCodes.map((country) => (
                         <button
@@ -177,10 +150,10 @@ export function PhoneNumberForm({ token, onSuccess }: PhoneNumberFormProps) {
                             setCountryCode(country.code);
                             setShowCountryDropdown(false);
                           }}
-                          className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm cursor-pointer flex items-center justify-between"
+                          className="w-full text-left px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white rounded-lg cursor-pointer flex items-center justify-between"
                         >
                           <span className="font-medium">{country.code}</span>
-                          <span className="text-xs text-muted-foreground">{country.country}</span>
+                          <span className="text-xs text-zinc-500">{country.country}</span>
                         </button>
                       ))}
                     </div>
@@ -194,26 +167,58 @@ export function PhoneNumberForm({ token, onSuccess }: PhoneNumberFormProps) {
                 type="tel"
                 placeholder="1234567890"
                 value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ''))}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '');
+                  if (val.length <= 10) setPhoneNumber(val);
+                }}
                 disabled={loading}
                 required
-                className="flex-1"
+                className="flex-1 h-12 bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-600 rounded-xl focus:ring-primary"
               />
             </div>
-            <p className="text-xs text-muted-foreground">
-              Select your country code and enter your phone number
-            </p>
+          </div>
+
+          {/* Team Number */}
+          <div className="space-y-2">
+            <Label htmlFor="teamNumber" className="text-zinc-300">Team Number</Label>
+            <Input
+              id="teamNumber"
+              type="number"
+              placeholder="Enter team number"
+              value={teamNumber}
+              onChange={(e) => setTeamNumber(e.target.value)}
+              disabled={loading}
+              className="h-12 bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-600 rounded-xl focus:ring-primary"
+            />
+          </div>
+
+          {/* Department Name */}
+          <div className="space-y-2">
+            <Label htmlFor="departmentName" className="text-zinc-300">Department Name</Label>
+            <Input
+              id="departmentName"
+              type="text"
+              placeholder="Enter department name"
+              value={departmentName}
+              onChange={(e) => setDepartmentName(e.target.value)}
+              disabled={loading}
+              className="h-12 bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-600 rounded-xl focus:ring-primary"
+            />
           </div>
 
           {error && (
-            <p className="text-sm text-destructive">{error}</p>
+            <p className="text-sm text-red-500 text-center bg-red-500/10 p-2 rounded-lg border border-red-500/20">{error}</p>
           )}
 
-          <Button type="submit" disabled={loading} className="w-full">
+          <Button
+            type="submit"
+            disabled={loading}
+            className="w-full h-12 text-lg font-semibold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg transition-all"
+          >
             {loading ? 'Creating account...' : 'Continue'}
           </Button>
         </form>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

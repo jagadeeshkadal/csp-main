@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
-import { conversationAPI } from '@/lib/api';
+import { conversationAPI, authAPI } from '@/lib/api';
 import type { EmailMessage, EmailConversation as EmailConv, AIAgent } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, Mail, Bot, User, Clock, ChevronDown, ChevronUp, Loader2, Mic, Download, ArrowLeft } from 'lucide-react';
+import { Send, Mail, Bot, User, Clock, ChevronDown, ChevronUp, Loader2, Mic, Download, ArrowLeft, Paperclip } from 'lucide-react';
 import { getUserData } from '@/lib/storage';
 import { Textarea } from '@/components/ui/textarea';
 import { HistoryDownloadModal } from '../agents/HistoryDownloadModal';
+import { getAuth, type User as FirebaseUser } from 'firebase/auth';
 
 interface EmailConversationProps {
   agent: AIAgent | null;
@@ -31,6 +32,23 @@ export function EmailConversation({ agent, conversationId, onUnreadChange, onVoi
   const userData = getUserData();
   const [expandedDetails, setExpandedDetails] = useState<Set<string>>(new Set());
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
+
+  // Listen for Firebase auth state to get photoURL
+  useEffect(() => {
+    const auth = getAuth();
+    const unsubscribe = auth.onAuthStateChanged((user: FirebaseUser | null) => {
+      setFirebaseUser(user);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Fetch fresh user data on mount to ensure avatar is in localStorage
+  useEffect(() => {
+    authAPI.getCurrentUser().catch(err => {
+      console.error('[EmailConversation] Failed to fetch user data:', err);
+    });
+  }, []);
 
   useEffect(() => {
     // Update ref to track current conversation
@@ -65,7 +83,7 @@ export function EmailConversation({ agent, conversationId, onUnreadChange, onVoi
       const scheduleNextRefresh = () => {
         // Random interval between 45-75 seconds (around 60 seconds)
         const randomInterval = 45000 + Math.random() * 30000; // 45s to 75s
-        console.log(`[EmailConversation] Next auto-refresh in ${Math.round(randomInterval / 1000)} seconds`);
+        console.log(`[EmailConversation] Next auto - refresh in ${Math.round(randomInterval / 1000)} seconds`);
 
         refreshIntervalRef.current = setTimeout(() => {
           console.log('[EmailConversation] Auto-refreshing conversation...');
@@ -158,7 +176,7 @@ export function EmailConversation({ agent, conversationId, onUnreadChange, onVoi
 
     // Create optimistic message (show immediately in UI)
     const optimisticMessage: EmailMessage = {
-      id: `temp-${Date.now()}`, // Temporary ID
+      id: `temp - ${Date.now()} `, // Temporary ID
       conversationId: targetConversationId,
       senderType: 'user',
       content: messageText,
@@ -311,9 +329,9 @@ export function EmailConversation({ agent, conversationId, onUnreadChange, onVoi
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
 
     if (days === 0) {
-      return `Today ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+      return `Today ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} `;
     } else if (days === 1) {
-      return `Yesterday ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+      return `Yesterday ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} `;
     } else if (days < 7) {
       return date.toLocaleDateString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' });
     } else {
@@ -369,6 +387,9 @@ export function EmailConversation({ agent, conversationId, onUnreadChange, onVoi
             {/* Agent Name */}
             <div className="flex-1 min-w-0">
               <h2 className="text-base md:text-lg font-semibold truncate">{agent.name}</h2>
+              {agent.location && (
+                <p className="text-xs text-muted-foreground truncate">{agent.location}</p>
+              )}
             </div>
           </div>
 
@@ -407,7 +428,7 @@ export function EmailConversation({ agent, conversationId, onUnreadChange, onVoi
               <p className="text-sm">Start the email conversation by sending a message below</p>
             </div>
           ) : (
-            <div className={`space-y-0 transition-opacity duration-300 ${isRefreshing ? 'opacity-0' : 'opacity-100'}`}>
+            <div className={`space - y - 0 transition - opacity duration - 300 ${isRefreshing ? 'opacity-0' : 'opacity-100'} `}>
               {messages.map((message, index) => {
                 const isExpanded = expandedMessages.has(message.id);
                 const isLast = index === messages.length - 1;
@@ -440,8 +461,8 @@ export function EmailConversation({ agent, conversationId, onUnreadChange, onVoi
                               </div>
                             )
                           ) : (
-                            <div className="w-8 h-8 md:w-12 md:h-12 rounded-full bg-primary/10 flex items-center justify-center border-2 border-background">
-                              <User className="h-4 w-4 md:h-6 md:w-6 text-primary" />
+                            <div className="w-8 h-8 md:w-12 md:h-12 rounded-full bg-zinc-200 dark:bg-zinc-600 flex items-center justify-center">
+                              <User className="h-4 w-4 md:h-6 md:w-6 text-zinc-900 dark:text-zinc-100" />
                             </div>
                           )}
                         </div>
@@ -457,7 +478,7 @@ export function EmailConversation({ agent, conversationId, onUnreadChange, onVoi
                                 </span>
                                 <span className="text-xs text-muted-foreground ml-2 break-words">
                                   &lt;{message.senderType === 'agent'
-                                    ? `${agent.name.toLowerCase().replace(/\s+/g, '.')}@ai-assistant.com`
+                                    ? `${agent.name.toLowerCase().replace(/\s+/g, '.')} @ai-assistant.com`
                                     : (userData?.email || 'user@example.com')}
                                   &gt;
                                 </span>
@@ -487,12 +508,12 @@ export function EmailConversation({ agent, conversationId, onUnreadChange, onVoi
                               {expandedDetails.has(message.id) && (
                                 <div className="text-xs text-muted-foreground space-y-1 mb-3 p-2 bg-muted/30 rounded border border-border/50 break-words">
                                   <div>From: {message.senderType === 'agent'
-                                    ? `${agent.name.toLowerCase().replace(/\s+/g, '.')}@ai-assistant.com`
+                                    ? `${agent.name.toLowerCase().replace(/\s+/g, '.')} @ai-assistant.com`
                                     : (userData?.email || 'user@example.com')}
                                   </div>
                                   <div>To: {message.senderType === 'agent'
                                     ? (userData?.email || 'user@example.com')
-                                    : `${agent.name.toLowerCase().replace(/\s+/g, '.')}@ai-assistant.com`}
+                                    : `${agent.name.toLowerCase().replace(/\s+/g, '.')} @ai-assistant.com`}
                                   </div>
                                   <div>Date: {formatEmailDate(message.createdAt)}</div>
                                 </div>
@@ -526,7 +547,10 @@ export function EmailConversation({ agent, conversationId, onUnreadChange, onVoi
               {waitingForAgent && (
                 <div className="px-8 py-4 flex items-center gap-3 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Agent is typing...</span>
+                  <div className="flex flex-col">
+                    <span>Email sent</span>
+                    <span>Waiting for the response...</span>
+                  </div>
                 </div>
               )}
             </div>

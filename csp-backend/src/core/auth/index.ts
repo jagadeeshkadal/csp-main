@@ -55,18 +55,23 @@ export const checkAuth = async (req: AuthenticatedRequest, res: Response, next: 
 const ssoSignupSchema = z.object({
   token: z.string().min(1, "Firebase token is required"),
   phoneNumber: z.string().min(1, "Phone number is required"),
+  teamNumber: z.string().optional(), // Or z.number().transform(String).optional() if frontend sends mixed types
+  departmentName: z.string().optional(),
+  avatar: z.string().nullable().optional(),
 });
 
-export const ssoSignup = async (params: { token: string; phoneNumber: string }) => {
+export const ssoSignup = async (params: { token: string; phoneNumber: string; teamNumber?: string; departmentName?: string; avatar?: string | null }) => {
   const parsed = ssoSignupSchema.safeParse(params);
   if (!parsed.success) {
     throw new BadRequestError("Invalid input", parsed.error.message);
   }
 
-  const { token, phoneNumber } = parsed.data;
+  const { token, phoneNumber, teamNumber, departmentName, avatar } = parsed.data;
 
   // Verify Firebase token
   const decoded = await firebaseAdmin.auth().verifyIdToken(token);
+  console.log(`[ssoSignup] Decoded Token Claims - Picture: ${decoded.picture ? 'Found' : 'Missing'}, Email: ${decoded.email}, Name: ${decoded.name}`);
+
 
   // Check if user already exists by email (for Google sign-in) or phone number
   let user = null;
@@ -89,18 +94,38 @@ export const ssoSignup = async (params: { token: string; phoneNumber: string }) 
     const userIdString = String(user.id);
     const customJWT = await createToken(userIdString);
 
-    // Update JWT
-    await userDML.updateUser(user.id, { jwt: customJWT });
+    // Update JWT and avatar if Google photoURL exists but user doesn't have avatar
+    // Also update team/department if provided
+    const updateData: any = { jwt: customJWT };
+
+    // Prioritize provided avatar, then token picture
+    const newAvatar = avatar || decoded.picture;
+    if (newAvatar && !user.avatar) {
+      updateData.avatar = newAvatar;
+    }
+
+    if (teamNumber) updateData.teamNumber = teamNumber;
+    if (departmentName) updateData.departmentName = departmentName;
+
+    await userDML.updateUser(user.id, updateData);
 
     return { user, token: customJWT };
   }
 
-  // Create new user
+  // Prioritize provided avatar, then token picture
+  // UPDATE: User requested to REMOVE profile photo completely.
+  // We will ignore any provided avatar and set it to null/default.
+  const finalAvatar = null; // Decoded.picture || null (Disabled)
+
+  // Create new user - include avatar from Google photoURL if available
   user = await userDML.createUser({
     phoneNumber,
     phoneExtension: "+91", // Default, can be extracted from phone number if needed
     email: decoded.email || null,
     name: decoded.name || null,
+    avatar: finalAvatar, // Force null
+    teamNumber: teamNumber || null,
+    departmentName: departmentName || null,
   });
 
   // Generate custom JWT - ensure userId is a string

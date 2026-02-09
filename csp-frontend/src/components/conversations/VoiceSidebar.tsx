@@ -22,6 +22,13 @@ declare global {
 }
 
 export function VoiceSidebar({ agent, conversationId, onClose, className }: VoiceSidebarProps) {
+  // Check if this agent's voice call has been started before (persists across sessions)
+  const [hasStartedCall, setHasStartedCall] = useState(() => {
+    if (!agent) return false;
+    const key = `voiceCallStarted_${agent.id}`;
+    return localStorage.getItem(key) === 'true';
+  });
+
   const [isCallActive, setIsCallActive] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isHoldActive, setIsHoldActive] = useState(false);
@@ -484,6 +491,14 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
     }
   };
 
+  // Handler for first-time call start - saves to localStorage then starts call
+  const handleFirstTimeStart = () => {
+    if (!agent) return;
+    const key = `voiceCallStarted_${agent.id}`;
+    localStorage.setItem(key, 'true');
+    setHasStartedCall(true);
+    startCall(); // FIXED: Must call startCall() to actually start the voice call
+  };
 
   const startCall = async () => {
     if (!recognitionRef.current) {
@@ -842,6 +857,15 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
     }
   };
 
+  // Update hasStartedCall when agent changes
+  useEffect(() => {
+    if (!agent) {
+      setHasStartedCall(false);
+      return;
+    }
+    const key = `voiceCallStarted_${agent.id}`;
+    setHasStartedCall(localStorage.getItem(key) === 'true');
+  }, [agent]);
 
   const isSpeechSupported = typeof window !== 'undefined' &&
     (window.SpeechRecognition || window.webkitSpeechRecognition);
@@ -853,7 +877,7 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
         <div className="flex-1 flex items-center justify-center p-8">
           <div className="text-center text-muted-foreground">
             <Mic className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p className="text-sm">Select an agent to start voice chat</p>
+            <p className="text-sm">Select an agent to start voice call</p>
           </div>
         </div>
       </div>
@@ -869,56 +893,51 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
             <img src={agent.avatar} alt={agent.name} className="w-10 h-10 rounded-full" />
           )}
           <div>
-            <h3 className="font-semibold">Voice Chat</h3>
+            <h3 className="font-semibold">Voice Call</h3>
             <p className="text-xs text-muted-foreground">{agent.name}</p>
           </div>
         </div>
-        {onClose && (
-          <div className="flex items-center gap-1">
-            <Button
-              variant={showSettings ? "secondary" : "ghost"}
-              size="icon"
-              onClick={() => setShowSettings(!showSettings)}
-              title="Audio Settings"
-            >
-              <Settings className="h-5 w-5" />
-            </Button>
-            <Button variant="ghost" size="icon" onClick={() => showSettings ? setShowSettings(false) : onClose()}>
-              <X className="h-5 w-5" />
-            </Button>
-          </div>
-        )}
+        <div className="flex items-center gap-1">
+          <Button
+            variant={showSettings ? "secondary" : "ghost"}
+            size="icon"
+            onClick={() => setShowSettings(!showSettings)}
+            title="Audio Settings"
+          >
+            <Settings className="h-5 w-5" />
+          </Button>
+        </div>
       </div>
 
       {/* Settings Panel - Overlay */}
       {showSettings && (
-        <div className="border-b bg-[hsl(36,95%,30%)] p-4 space-y-4 animate-in slide-in-from-top-2 duration-200 text-white shadow-lg">
+        <div className="border-b bg-muted backdrop-blur-sm p-4 space-y-4 animate-in slide-in-from-top-2 duration-200 shadow-lg rounded-lg">
           <div className="flex items-center justify-between">
-            <label className="text-sm font-medium">Automatic Noise Sensitivity</label>
+            <label className="text-base font-medium">Automatic Noise Sensitivity</label>
             <Switch
               checked={autoSensitivity}
               onCheckedChange={setAutoSensitivity}
-              className="data-[state=checked]:bg-white data-[state=unchecked]:bg-black/20 [&>span]:bg-white"
+              className="data-[state=checked]:bg-white data-[state=unchecked]:bg-zinc-600 [&>span]:bg-white"
             />
           </div>
 
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <label className="text-sm font-medium">Allow Interruptions</label>
-              <p className="text-[10px] text-muted-foreground">
+              <label className="text-base font-medium">Allow Interruptions</label>
+              <p className="text-xs text-muted-foreground">
                 Turn off if the agent hears itself (echo)
               </p>
             </div>
             <Switch
               checked={bargeInEnabled}
               onCheckedChange={setBargeInEnabled}
-              className="data-[state=checked]:bg-white data-[state=unchecked]:bg-black/20 [&>span]:bg-white"
+              className="data-[state=checked]:bg-white data-[state=unchecked]:bg-zinc-600 [&>span]:bg-white"
             />
           </div>
 
           {!autoSensitivity && (
             <div className="space-y-3 pt-2">
-              <div className="flex justify-between text-xs text-muted-foreground">
+              <div className="flex justify-between text-sm text-foreground">
                 <span>Input Volume</span>
                 <span>{Math.round(inputGain * 100)}%</span>
               </div>
@@ -959,13 +978,13 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
                 step="0.1"
                 value={inputGain}
                 onChange={(e) => setInputGain(parseFloat(e.target.value))}
-                className="w-full h-2 bg-black/20 rounded-lg appearance-none cursor-pointer
+                className="w-full h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer
                     [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 
                     [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white
                     [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 
                     [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-0"
               />
-              <p className="text-[10px] text-white/80">
+              <p className="text-xs text-muted-foreground">
                 Adjust input volume if your microphone is too quiet or too loud.
               </p>
             </div>
@@ -1093,214 +1112,236 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
         crossOrigin="anonymous"
       />
 
-      {/* Circular Visualizer - Always visible in center */}
-      <div className="flex-1 flex flex-col items-center justify-center">
-        <div className="relative flex items-center justify-center">
-          {(() => {
-            // Calculate animation level - use audioLevel when speaking, or pulse when playing/thinking
-            const animationLevel = isRecording && audioLevel > 0
-              ? audioLevel
-              : (isPlayingAudio || statusText)
-                ? pulseLevel
-                : 0;
+      {/* Conditional Rendering: First-time UI vs Active Call UI */}
+      {!hasStartedCall ? (
+        /* First-time "Click to Start Call" UI */
+        <div className="flex-1 flex flex-col items-center justify-center p-8" style={{ marginTop: '-10%' }}>
+          <Mic className="h-24 w-24 mb-6 text-blue-500 opacity-80" />
+          <p className="text-base text-muted-foreground mb-6 text-center">
+            Click to join the voice call
+          </p>
+          <Button
+            size="lg"
+            onClick={handleFirstTimeStart}
+            className="gap-2"
+          >
+            <Phone className="h-5 w-5" />
+            Join Call
+          </Button>
+        </div>
+      ) : (
+        /* Active Voice Call UI */
+        <>
+          {/* Circular Visualizer - Always visible in center */}
+          <div className="flex-1 flex flex-col items-center justify-center">
+            <div className="relative flex items-center justify-center">
+              {(() => {
+                // Calculate animation level - use audioLevel when speaking, or pulse when playing/thinking
+                const animationLevel = isRecording && audioLevel > 0
+                  ? audioLevel
+                  : (isPlayingAudio || statusText)
+                    ? pulseLevel
+                    : 0;
 
-            return (
-              <>
-                {/* Outer glow ring */}
-                <div
-                  className="absolute rounded-full transition-all duration-100"
-                  style={{
-                    width: `${180 + animationLevel * 60}px`,
-                    height: `${180 + animationLevel * 60}px`,
-                    background: `radial-gradient(circle, rgba(59, 130, 246, ${isRecording || isPlayingAudio || statusText ? 0.2 + animationLevel * 0.3 : 0.1}) 0%, rgba(59, 130, 246, ${isRecording || isPlayingAudio || statusText ? 0.05 + animationLevel * 0.1 : 0.03}) 50%, transparent 70%)`,
-                    opacity: isRecording || isPlayingAudio || statusText ? 0.6 + animationLevel * 0.4 : 0.3,
-                    transform: `scale(${isRecording || isPlayingAudio || statusText ? 1 + animationLevel * 0.2 : 1})`,
-                  }}
-                />
+                return (
+                  <>
+                    {/* Outer glow ring */}
+                    <div
+                      className="absolute rounded-full transition-all duration-100"
+                      style={{
+                        width: `${180 + animationLevel * 60}px`,
+                        height: `${180 + animationLevel * 60}px`,
+                        background: `radial-gradient(circle, rgba(59, 130, 246, ${isRecording || isPlayingAudio || statusText ? 0.2 + animationLevel * 0.3 : 0.1}) 0%, rgba(59, 130, 246, ${isRecording || isPlayingAudio || statusText ? 0.05 + animationLevel * 0.1 : 0.03}) 50%, transparent 70%)`,
+                        opacity: isRecording || isPlayingAudio || statusText ? 0.6 + animationLevel * 0.4 : 0.3,
+                        transform: `scale(${isRecording || isPlayingAudio || statusText ? 1 + animationLevel * 0.2 : 1})`,
+                      }}
+                    />
 
-                {/* Middle cloud-like layer */}
-                <div
-                  className="absolute rounded-full transition-all duration-100"
-                  style={{
-                    width: `${160 + animationLevel * 50}px`,
-                    height: `${160 + animationLevel * 50}px`,
-                    background: `radial-gradient(circle at 30% 30%, rgba(147, 197, 253, ${isRecording || isPlayingAudio || statusText ? 0.4 + animationLevel * 0.3 : 0.2}) 0%, rgba(96, 165, 250, ${isRecording || isPlayingAudio || statusText ? 0.3 + animationLevel * 0.2 : 0.15}) 40%, rgba(59, 130, 246, ${isRecording || isPlayingAudio || statusText ? 0.2 + animationLevel * 0.2 : 0.1}) 70%, rgba(37, 99, 235, ${isRecording || isPlayingAudio || statusText ? 0.1 + animationLevel * 0.1 : 0.05}) 100%)`,
-                    opacity: isRecording || isPlayingAudio || statusText ? 0.7 + animationLevel * 0.3 : 0.4,
-                    transform: `scale(${isRecording || isPlayingAudio || statusText ? 1 + animationLevel * 0.15 : 1})`,
-                    filter: 'blur(8px)',
-                  }}
-                />
+                    {/* Middle cloud-like layer */}
+                    <div
+                      className="absolute rounded-full transition-all duration-100"
+                      style={{
+                        width: `${160 + animationLevel * 50}px`,
+                        height: `${160 + animationLevel * 50}px`,
+                        background: `radial-gradient(circle at 30% 30%, rgba(147, 197, 253, ${isRecording || isPlayingAudio || statusText ? 0.4 + animationLevel * 0.3 : 0.2}) 0%, rgba(96, 165, 250, ${isRecording || isPlayingAudio || statusText ? 0.3 + animationLevel * 0.2 : 0.15}) 40%, rgba(59, 130, 246, ${isRecording || isPlayingAudio || statusText ? 0.2 + animationLevel * 0.2 : 0.1}) 70%, rgba(37, 99, 235, ${isRecording || isPlayingAudio || statusText ? 0.1 + animationLevel * 0.1 : 0.05}) 100%)`,
+                        opacity: isRecording || isPlayingAudio || statusText ? 0.7 + animationLevel * 0.3 : 0.4,
+                        transform: `scale(${isRecording || isPlayingAudio || statusText ? 1 + animationLevel * 0.15 : 1})`,
+                        filter: 'blur(8px)',
+                      }}
+                    />
 
-                {/* Main circular visualizer */}
-                <div
-                  className="relative rounded-full transition-all duration-100 flex items-center justify-center overflow-hidden"
-                  style={{
-                    width: `${140 + animationLevel * 40}px`,
-                    height: `${140 + animationLevel * 40}px`,
-                    background: `radial-gradient(circle at 25% 25%, 
+                    {/* Main circular visualizer */}
+                    <div
+                      className="relative rounded-full transition-all duration-100 flex items-center justify-center overflow-hidden"
+                      style={{
+                        width: `${140 + animationLevel * 40}px`,
+                        height: `${140 + animationLevel * 40}px`,
+                        background: `radial-gradient(circle at 25% 25%, 
                 rgba(191, 219, 254, ${isRecording || isPlayingAudio || statusText ? 0.8 + animationLevel * 0.2 : 0.6}) 0%, 
                 rgba(147, 197, 253, ${isRecording || isPlayingAudio || statusText ? 0.6 + animationLevel * 0.2 : 0.4}) 25%,
                 rgba(96, 165, 250, ${isRecording || isPlayingAudio || statusText ? 0.5 + animationLevel * 0.2 : 0.3}) 50%,
                 rgba(59, 130, 246, ${isRecording || isPlayingAudio || statusText ? 0.4 + animationLevel * 0.2 : 0.25}) 75%,
                 rgba(37, 99, 235, ${isRecording || isPlayingAudio || statusText ? 0.3 + animationLevel * 0.1 : 0.2}) 100%)`,
-                    boxShadow: `0 0 ${isRecording || isPlayingAudio || statusText ? 30 + animationLevel * 40 : 20}px rgba(59, 130, 246, ${isRecording || isPlayingAudio || statusText ? 0.4 + animationLevel * 0.4 : 0.3}), 
+                        boxShadow: `0 0 ${isRecording || isPlayingAudio || statusText ? 30 + animationLevel * 40 : 20}px rgba(59, 130, 246, ${isRecording || isPlayingAudio || statusText ? 0.4 + animationLevel * 0.4 : 0.3}), 
                           inset 0 0 ${isRecording || isPlayingAudio || statusText ? 20 + animationLevel * 20 : 15}px rgba(191, 219, 254, ${isRecording || isPlayingAudio || statusText ? 0.3 + animationLevel * 0.2 : 0.2})`,
-                    transform: `scale(${isRecording || isPlayingAudio || statusText ? 1 + animationLevel * 0.1 : 1})`,
-                  }}
-                >
-                  {/* Inner highlight */}
-                  <div
-                    className="absolute top-0 left-0 w-full h-full rounded-full transition-all duration-100"
-                    style={{
-                      background: `radial-gradient(circle at 30% 30%, rgba(255, 255, 255, ${isRecording || isPlayingAudio || statusText ? 0.3 + animationLevel * 0.2 : 0.2}) 0%, transparent 60%)`,
-                    }}
-                  />
-                </div>
+                        transform: `scale(${isRecording || isPlayingAudio || statusText ? 1 + animationLevel * 0.1 : 1})`,
+                      }}
+                    >
+                      {/* Inner highlight */}
+                      <div
+                        className="absolute top-0 left-0 w-full h-full rounded-full transition-all duration-100"
+                        style={{
+                          background: `radial-gradient(circle at 30% 30%, rgba(255, 255, 255, ${isRecording || isPlayingAudio || statusText ? 0.3 + animationLevel * 0.2 : 0.2}) 0%, transparent 60%)`,
+                        }}
+                      />
+                    </div>
 
-                {/* Animated ripples - when recording, playing, or thinking */}
-                {(isRecording || isPlayingAudio || statusText) && [0, 1, 2].map((i) => (
-                  <div
-                    key={i}
-                    className="absolute rounded-full border-2 border-primary/30 dark:border-black/30 transition-all duration-300"
-                    style={{
-                      width: `${140 + animationLevel * 40 + i * 20}px`,
-                      height: `${140 + animationLevel * 40 + i * 20}px`,
-                      opacity: (0.3 - i * 0.1) * (1 - animationLevel * 0.5),
-                      animation: `pulse ${2 + i * 0.5}s ease-in-out infinite`,
-                      animationDelay: `${i * 0.3}s`,
-                    }}
-                  />
-                ))}
-              </>
-            );
-          })()}
-        </div>
-
-        {/* Status Text Indicator - RESTORED under visualizer */}
-        <div className="mt-6 text-center h-6">
-          {/* Dynamic Status */}
-          {isCallActive && (
-            <p className="text-sm font-medium transition-all duration-300">
-              {statusText === 'speaking' ? "Speaking..." :
-                isHoldActive ? "Call on hold" :
-                  isMuted ? "Microphone muted" :
-                    (statusText === 'thinking' || statusText === 'researching') ? "Thinking..." :
-                      statusText === 'listening' ? "Listening..." :
-                        "Ready"}
-            </p>
-          )}
-        </div>
-
-        {/* Status Text & Controls - Spacer only */}
-        {isCallActive && (
-          <div className="text-center space-y-4 pt-1">
-          </div>
-        )}
-
-        {/* Real-time Captions */}
-        {isCallActive && (
-          <div className="mt-4 px-4 min-h-[80px] max-h-[120px] overflow-y-auto">
-            {/* User's speech (real-time) */}
-            {interimTranscript && (
-              <div className="mb-2 p-3 bg-zinc-800 rounded-lg border border-zinc-700">
-                <p className="text-xs text-zinc-400 mb-1">You:</p>
-                <p className="text-sm text-white italic">{interimTranscript}</p>
-              </div>
-            )}
-
-            {/* AI's response */}
-            {isPlayingAudio && lastAgentResponse && (
-              <div className="mb-2 p-3 bg-zinc-800 rounded-lg border border-zinc-700">
-                <p className="text-xs text-zinc-400 mb-1">{agent?.name || 'AI'}:</p>
-                <p className="text-sm text-white">{lastAgentResponse}</p>
-              </div>
-            )}
-
-            {/* Show a placeholder when nothing is being said */}
-            {!interimTranscript && !isPlayingAudio && (
-              <div className="text-center text-xs text-muted-foreground py-4">
-                Captions will appear here...
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Call Controls */}
-      <div className="border-t p-4 space-y-2 relative z-50 bg-card">
-        {!isSpeechSupported ? (
-          <div className="text-center text-sm text-destructive">
-            Speech recognition is not supported in your browser.
-          </div>
-        ) : (
-          <>
-            {/* Processing Indicator - Above buttons */}
-            {isProcessing && (
-              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground pb-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Processing...</span>
-              </div>
-            )}
-
-            {/* Buttons */}
-            <div className="flex gap-2">
-              {/* Start/End Call Button */}
-              <Button
-                onClick={isCallActive ? endCall : startCall}
-                className="flex-1 text-xs px-2"
-                variant={isCallActive ? "destructive" : "default"}
-                size="sm"
-                disabled={!conversationId || isProcessing}
-              >
-                {isCallActive ? (
-                  <>
-                    <PhoneOff className="h-4 w-4 mr-1" />
-                    End
+                    {/* Animated ripples - when recording, playing, or thinking */}
+                    {(isRecording || isPlayingAudio || statusText) && [0, 1, 2].map((i) => (
+                      <div
+                        key={i}
+                        className="absolute rounded-full border-2 border-primary/30 dark:border-black/30 transition-all duration-300"
+                        style={{
+                          width: `${140 + animationLevel * 40 + i * 20}px`,
+                          height: `${140 + animationLevel * 40 + i * 20}px`,
+                          opacity: (0.3 - i * 0.1) * (1 - animationLevel * 0.5),
+                          animation: `pulse ${2 + i * 0.5}s ease-in-out infinite`,
+                          animationDelay: `${i * 0.3}s`,
+                        }}
+                      />
+                    ))}
                   </>
-                ) : (
-                  <>
-                    <Phone className="h-4 w-4 mr-1" />
-                    Start
-                  </>
-                )}
-              </Button>
-
-              {/* Mute Button */}
-              <Button
-                onClick={toggleMute}
-                className="flex-1 text-xs px-2"
-                variant={isMuted ? "destructive" : "outline"}
-                size="sm"
-                disabled={!isCallActive || !conversationId || isProcessing}
-              >
-                {isMuted ? (
-                  <>
-                    <MicOff className="h-4 w-4 mr-1" />
-                    Unmute
-                  </>
-                ) : (
-                  <>
-                    <Mic className="h-4 w-4 mr-1" />
-                    Mute
-                  </>
-                )}
-              </Button>
-
-              {/* Hold Button */}
-              <Button
-                onClick={handleHold}
-                className={`flex-1 text-xs px-2 ${isHoldActive ? 'bg-secondary text-secondary-foreground hover:bg-secondary/90' : ''}`}
-                variant={isHoldActive ? "default" : "outline"}
-                size="sm"
-                disabled={!isCallActive || !conversationId || isProcessing}
-              >
-                <Pause className="h-4 w-4 mr-1" />
-                Hold
-              </Button>
+                );
+              })()}
             </div>
-          </>
-        )}
-      </div>
-    </div >
+
+            {/* Status Text Indicator - RESTORED under visualizer */}
+            <div className="mt-6 text-center h-6">
+              {/* Dynamic Status */}
+              {isCallActive && (
+                <p className="text-sm font-medium transition-all duration-300">
+                  {statusText === 'speaking' ? "Speaking..." :
+                    isHoldActive ? "Call on hold" :
+                      isMuted ? "Microphone muted" :
+                        (statusText === 'thinking' || statusText === 'researching') ? "Thinking..." :
+                          statusText === 'listening' ? "Listening..." :
+                            "Ready"}
+                </p>
+              )}
+            </div>
+
+            {/* Status Text & Controls - Spacer only */}
+            {isCallActive && (
+              <div className="text-center space-y-4 pt-1">
+              </div>
+            )}
+
+            {/* Real-time Captions */}
+            {isCallActive && (
+              <div className="mt-4 px-4 min-h-[80px] max-h-[120px] overflow-y-auto">
+                {/* User's speech (real-time) */}
+                {interimTranscript && (
+                  <div className="mb-2 p-3 bg-muted rounded-lg border border-border">
+                    <p className="text-xs text-muted-foreground mb-1">You:</p>
+                    <p className="text-sm text-foreground italic">{interimTranscript}</p>
+                  </div>
+                )}
+
+                {/* AI's response */}
+                {isPlayingAudio && lastAgentResponse && (
+                  <div className="mb-2 p-3 bg-muted rounded-lg border border-border">
+                    <p className="text-xs text-muted-foreground mb-1">{agent?.name || 'AI'}:</p>
+                    <p className="text-sm text-foreground">{lastAgentResponse}</p>
+                  </div>
+                )}
+
+                {/* Show a placeholder when nothing is being said */}
+                {!interimTranscript && !isPlayingAudio && (
+                  <div className="text-center text-xs text-muted-foreground py-4">
+                    Captions will appear here...
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Call Controls */}
+          <div className="border-t p-4 space-y-2 relative z-50 bg-card">
+            {!isSpeechSupported ? (
+              <div className="text-center text-sm text-destructive">
+                Speech recognition is not supported in your browser.
+              </div>
+            ) : (
+              <>
+                {/* Processing Indicator - Above buttons */}
+                {isProcessing && (
+                  <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground pb-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Processing...</span>
+                  </div>
+                )}
+
+                {/* Buttons */}
+                <div className="flex gap-2">
+                  {/* Start/End Call Button */}
+                  <Button
+                    onClick={isCallActive ? endCall : startCall}
+                    className="flex-1 text-xs px-2"
+                    variant={isCallActive ? "destructive" : "default"}
+                    size="sm"
+                    disabled={!conversationId || isProcessing}
+                  >
+                    {isCallActive ? (
+                      <>
+                        <PhoneOff className="h-4 w-4 mr-1" />
+                        End
+                      </>
+                    ) : (
+                      <>
+                        <Phone className="h-4 w-4 mr-1" />
+                        Start
+                      </>
+                    )}
+                  </Button>
+
+                  {/* Mute Button */}
+                  <Button
+                    onClick={toggleMute}
+                    className="flex-1 text-xs px-2"
+                    variant={isMuted ? "destructive" : "outline"}
+                    size="sm"
+                    disabled={!isCallActive || !conversationId || isProcessing}
+                  >
+                    {isMuted ? (
+                      <>
+                        <MicOff className="h-4 w-4 mr-1" />
+                        Unmute
+                      </>
+                    ) : (
+                      <>
+                        <Mic className="h-4 w-4 mr-1" />
+                        Mute
+                      </>
+                    )}
+                  </Button>
+
+                  {/* Hold Button */}
+                  <Button
+                    onClick={handleHold}
+                    className={`flex-1 text-xs px-2 ${isHoldActive ? 'bg-secondary text-secondary-foreground hover:bg-secondary/90' : ''}`}
+                    variant={isHoldActive ? "default" : "outline"}
+                    size="sm"
+                    disabled={!isCallActive || !conversationId || isProcessing}
+                  >
+                    <Pause className="h-4 w-4 mr-1" />
+                    Hold
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        </>
+      )}
+    </div>
   );
 }

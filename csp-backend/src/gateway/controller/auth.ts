@@ -4,8 +4,8 @@ import { BaseError } from "../../common/errors.js";
 
 const ssoSignup = async (req: Request, res: Response) => {
     try {
-        const { token, phoneNumber } = req.body;
-        const result = await userCore.ssoSignup({ token, phoneNumber });
+        const { token, phoneNumber, teamNumber, departmentName, avatar } = req.body;
+        const result = await userCore.ssoSignup({ token, phoneNumber, teamNumber, departmentName, avatar });
         res.status(200).json(result);
     } catch (e) {
         console.error("Error in auth controller:", e);

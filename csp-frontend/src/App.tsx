@@ -13,6 +13,7 @@ import { authAPI } from '@/lib/api';
 function AuthPageContent() {
   const [step, setStep] = useState<'signin' | 'phone'>('signin');
   const [firebaseToken, setFirebaseToken] = useState<string | null>(null);
+  const [avatar, setAvatar] = useState<string | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const navigate = useNavigate();
   const hasChecked = useRef(false);
@@ -55,8 +56,9 @@ function AuthPageContent() {
     checkAuth();
   }, []); // Empty dependency array - only run once on mount
 
-  const handleSignUp = (token: string) => {
+  const handleSignUp = (token: string, avatarUrl?: string | null) => {
     setFirebaseToken(token);
+    setAvatar(avatarUrl || null);
     setStep('phone');
   };
 
@@ -77,7 +79,7 @@ function AuthPageContent() {
       {step === 'signin' ? (
         <GoogleSignIn onSuccess={handleSuccess} onSignUp={handleSignUp} />
       ) : firebaseToken ? (
-        <PhoneNumberForm token={firebaseToken} onSuccess={handleSuccess} />
+        <PhoneNumberForm token={firebaseToken} avatar={avatar} onSuccess={handleSuccess} />
       ) : null}
     </CorporateLayout>
   );

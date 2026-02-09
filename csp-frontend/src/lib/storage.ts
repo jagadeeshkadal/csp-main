@@ -8,6 +8,7 @@ export interface UserData {
   phoneExtension: string;
   name?: string | null;
   email?: string | null;
+  avatar?: string | null;
   jwt?: string | null;
 }
 
@@ -24,7 +25,7 @@ export const getUserId = (): string | null => {
 export const getUserData = (): UserData | null => {
   const userStr = localStorage.getItem('user');
   if (!userStr) return null;
-  
+
   try {
     return JSON.parse(userStr) as UserData;
   } catch (e) {

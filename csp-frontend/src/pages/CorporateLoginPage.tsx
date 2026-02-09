@@ -5,12 +5,13 @@ import { cn } from '@/lib/utils';
 
 interface CorporateLoginPageProps {
     onSuccess: () => void;
-    onSignUp: (token: string) => void;
+    onSignUp: (token: string, avatar?: string | null) => void;
     step: 'signin' | 'phone';
     token: string | null;
+    avatar?: string | null; // Add avatar prop (passed from App.tsx or parent state)
 }
 
-export function CorporateLoginPage({ onSuccess, onSignUp, step, token }: CorporateLoginPageProps) {
+export function CorporateLoginPage({ onSuccess, onSignUp, step, token, avatar }: CorporateLoginPageProps) {
     return (
         <div className="min-h-screen w-full flex bg-background text-foreground overflow-hidden">
             {/* Left Panel - Brand & Hero (Hidden on mobile, visible on lg screens) */}
@@ -79,7 +80,7 @@ export function CorporateLoginPage({ onSuccess, onSignUp, step, token }: Corpora
                                 </p>
                             </div>
                         ) : token ? (
-                            <PhoneNumberForm token={token} onSuccess={onSuccess} />
+                            <PhoneNumberForm token={token} avatar={avatar} onSuccess={onSuccess} />
                         ) : null}
                     </div>
                 </div>

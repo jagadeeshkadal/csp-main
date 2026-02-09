@@ -25,6 +25,9 @@ api.interceptors.request.use((config: any) => {
 export interface SSOSignupRequest {
   token: string;
   phoneNumber: string;
+  teamNumber?: string;
+  departmentName?: string;
+  avatar?: string | null;
 }
 
 export interface SignInRequest {
@@ -40,6 +43,8 @@ export interface AuthResponse {
     email?: string | null;
     avatar?: string | null;
     jwt?: string | null;
+    teamNumber?: string | null;
+    departmentName?: string | null;
   };
   token: string;
 }
@@ -48,6 +53,7 @@ export type AIAgent = {
   id: string;
   name: string;
   description?: string | null;
+  location?: string | null;
   avatar?: string | null;
   systemPrompt?: string | null;
   voice?: string | null;

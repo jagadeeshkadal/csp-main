@@ -18,7 +18,9 @@ const getUserIdFromRequest = async (req: Request): Promise<string> => {
 const getConversations = async (req: Request, res: Response) => {
   try {
     const userId = await getUserIdFromRequest(req);
+    console.log(`[getConversations] Fetching conversations for user: ${userId}`);
     const conversations = await conversationCore.getConversations(userId);
+    console.log(`[getConversations] Returning ${conversations.length} conversations`);
     res.status(200).json({ conversations });
   } catch (e) {
     if (e instanceof BaseError) {

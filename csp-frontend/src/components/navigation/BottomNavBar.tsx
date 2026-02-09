@@ -1,9 +1,9 @@
-import { Home, MessageCircle } from 'lucide-react';
+import { Home, MessageCircle, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface BottomNavBarProps {
-    activeView: 'home' | 'chats';
-    onViewChange: (view: 'home' | 'chats') => void;
+    activeView: 'home' | 'chats' | 'submissions';
+    onViewChange: (view: 'home' | 'chats' | 'submissions') => void;
     unreadCount?: number;
 }
 
@@ -44,6 +44,20 @@ export function BottomNavBar({ activeView, onViewChange, unreadCount = 0 }: Bott
                         )}
                     </div>
                     <span className="text-xs mt-1">Chats</span>
+                </button>
+
+                {/* Submissions Tab */}
+                <button
+                    onClick={() => onViewChange('submissions')}
+                    className={cn(
+                        "flex flex-col items-center justify-center flex-1 h-full transition-colors",
+                        activeView === 'submissions'
+                            ? "text-primary dark:text-foreground"
+                            : "text-muted-foreground dark:text-foreground/70"
+                    )}
+                >
+                    <FileText className="h-6 w-6" />
+                    <span className="text-xs mt-1">Submissions</span>
                 </button>
             </div>
         </div>

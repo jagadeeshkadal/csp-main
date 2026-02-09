@@ -82,8 +82,15 @@ export const AgentSidebar = forwardRef<AgentSidebarRef, AgentSidebarProps>(
 
             if (conversation.messages) {
               // Check if there are any unread agent messages
+              // Check if there are any unread agent messages
               const hasUnreadAgentMessage = conversation.messages.some(
-                (msg) => msg.senderType === 'agent' && !msg.isRead
+                (msg) => {
+                  const isAgent = msg.senderType && msg.senderType.toLowerCase() === 'agent';
+                  // Handle string "false" or boolean false
+                  const isRead = String(msg.isRead) === 'true';
+                  const isUnread = !isRead;
+                  return isAgent && isUnread;
+                }
               );
 
               if (hasUnreadAgentMessage) {

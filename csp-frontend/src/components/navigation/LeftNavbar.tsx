@@ -1,12 +1,12 @@
 import { useState, useEffect, useImperativeHandle, forwardRef, useCallback } from 'react';
-import { Home, MessageSquare, Menu } from 'lucide-react';
+import { Home, MessageSquare, Menu, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { conversationAPI } from '@/lib/api';
 
 interface LeftNavbarProps {
-  activeView: 'home' | 'chats';
-  onViewChange: (view: 'home' | 'chats') => void;
+  activeView: 'home' | 'chats' | 'submissions';
+  onViewChange: (view: 'home' | 'chats' | 'submissions') => void;
   children?: React.ReactNode;
   className?: string;
   isMobile?: boolean;
@@ -19,7 +19,7 @@ export interface LeftNavbarRef {
 
 export const LeftNavbar = forwardRef<LeftNavbarRef, LeftNavbarProps>(
   ({ activeView, onViewChange, children, className, isMobile, onMobileClose }, ref) => {
-    const isCollapsed = true; // Always collapsed (icon-only mode)
+    const [isCollapsed, setIsCollapsed] = useState(true); // Start collapsed (icon-only)
     const [unreadCount, setUnreadCount] = useState(0);
 
     const checkUnreadMessages = useCallback(async () => {
@@ -40,7 +40,13 @@ export const LeftNavbar = forwardRef<LeftNavbarRef, LeftNavbarProps>(
 
           if (conversation.messages) {
             const unreadInConversation = conversation.messages.filter(
-              (msg) => msg.senderType === 'agent' && !msg.isRead
+              (msg) => {
+                const isAgent = msg.senderType && msg.senderType.toLowerCase() === 'agent';
+                // Handle string "false" or boolean false
+                const isRead = String(msg.isRead) === 'true';
+                const isUnread = !isRead;
+                return isAgent && isUnread;
+              }
             ).length;
             totalUnread += unreadInConversation;
           }
@@ -80,6 +86,18 @@ export const LeftNavbar = forwardRef<LeftNavbarRef, LeftNavbarProps>(
           isMobile ? "w-full" : (isCollapsed ? "w-20" : "w-64")
         )}>
 
+          {/* Hamburger Menu Button - Top */}
+          <div className={cn("p-2 border-b flex", isCollapsed ? "justify-center" : "justify-start")}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              title={isCollapsed ? 'Expand Menu' : 'Collapse Menu'}
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+          </div>
+
           {/* Navigation Items */}
           <div className="flex-1 py-2">
             <Button
@@ -98,7 +116,7 @@ export const LeftNavbar = forwardRef<LeftNavbarRef, LeftNavbarProps>(
             <Button
               variant={activeView === 'chats' ? 'secondary' : 'ghost'}
               className={cn(
-                "w-full justify-start relative",
+                "w-full justify-start relative mb-1",
                 isCollapsed ? "justify-center px-2" : "px-4"
               )}
               onClick={() => onViewChange('chats')}
@@ -123,6 +141,19 @@ export const LeftNavbar = forwardRef<LeftNavbarRef, LeftNavbarProps>(
                 </span>
               )}
             </Button>
+
+            <Button
+              variant={activeView === 'submissions' ? 'secondary' : 'ghost'}
+              className={cn(
+                "w-full justify-start",
+                isCollapsed ? "justify-center px-2" : "px-4"
+              )}
+              onClick={() => onViewChange('submissions')}
+              title={isCollapsed ? 'Submissions' : undefined}
+            >
+              <FileText className="h-5 w-5 flex-shrink-0" />
+              {!isCollapsed && <span className="ml-3">Submissions</span>}
+            </Button>
           </div>
         </div>
 
@@ -140,3 +171,4 @@ export const LeftNavbar = forwardRef<LeftNavbarRef, LeftNavbarProps>(
     );
   }
 );
+

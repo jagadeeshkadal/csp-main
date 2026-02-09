@@ -9,9 +9,11 @@ import { VoiceSidebar } from '@/components/conversations/VoiceSidebar';
 import { LeftNavbar, type LeftNavbarRef } from '@/components/navigation/LeftNavbar';
 import { BottomNavBar } from '@/components/navigation/BottomNavBar';
 import { Dashboard } from '@/components/dashboard/Dashboard';
+import { SubmissionsPage } from '@/pages/SubmissionsPage';
 import { DropdownMenu, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { User, LogOut, UserCircle } from 'lucide-react';
 import type { User as FirebaseUser } from 'firebase/auth';
+import { getAuth } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -33,9 +35,9 @@ export function HomePage() {
   const [selectedAgent, setSelectedAgent] = useState<AIAgent | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
   // Restore active view from localStorage, default to 'home' for first-time users
-  const [activeView, setActiveView] = useState<'home' | 'chats'>(() => {
+  const [activeView, setActiveView] = useState<'home' | 'chats' | 'submissions'>(() => {
     const saved = localStorage.getItem('activeView');
-    return (saved === 'home' || saved === 'chats') ? saved : 'home';
+    return (saved === 'home' || saved === 'chats' || saved === 'submissions') ? saved : 'home';
   });
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isVoiceOpen, setIsVoiceOpen] = useState(false);
@@ -44,6 +46,7 @@ export function HomePage() {
   const leftNavbarRef = useRef<LeftNavbarRef>(null);
   const agentSidebarRef = useRef<AgentSidebarRef>(null);
   const selectedAgentRef = useRef<AIAgent | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     // Prevent multiple calls
@@ -56,9 +59,6 @@ export function HomePage() {
 
     const fetchUserData = async () => {
       try {
-        const currentUser = getCurrentUser();
-        setFirebaseUser(currentUser);
-
         let token = getAuthToken();
 
         if (token) {
@@ -88,6 +88,98 @@ export function HomePage() {
     fetchUserData();
     return () => clearTimeout(safetyTimeout);
   }, [navigate]);
+
+  // Listen for Firebase auth state changes to capture photoURL
+  useEffect(() => {
+    const auth = getAuth();
+    const unsubscribe = auth.onAuthStateChanged((user: FirebaseUser | null) => {
+      setFirebaseUser(user);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Check unread messages
+  const checkUnreadMessages = async () => {
+    try {
+      const response = await conversationAPI.getConversations();
+      const conversations = response.conversations;
+
+      console.log(`[HomePage] Fetched ${conversations.length} conversations via API`);
+
+      // Count total unread agent messages across all conversations
+      let totalUnread = 0;
+
+      for (const conversation of conversations) {
+        // Skip if agent is inactive
+        // Robust check: Default to true if isActive is undefined
+        const isAgentActive = conversation.agent?.isActive !== false;
+
+        if (conversation.agent && !isAgentActive) {
+          console.log(`[HomePage] Skipping inactive agent: ${conversation.agent.name}`);
+          continue;
+        }
+
+        if (conversation.messages && conversation.messages.length > 0) {
+          // DEBUG: Inspect first message of each conversation
+          const firstMsg = conversation.messages[0];
+          console.log(`[HomePage] Conversation ${conversation.id} (Agent: ${conversation.agent?.name}) - Last Msg:`, {
+            senderType: firstMsg.senderType,
+            isRead: firstMsg.isRead,
+            typeOfIsRead: typeof firstMsg.isRead
+          });
+
+          const unreadInConversation = conversation.messages.filter(
+            (msg) => {
+              const isAgent = msg.senderType && msg.senderType.toLowerCase() === 'agent';
+              // Handle string "false" or boolean false - use String() for safety against JSON types
+              const isRead = String(msg.isRead) === 'true';
+              const isUnread = !isRead;
+
+              return isAgent && isUnread;
+            }
+          ).length;
+
+          if (unreadInConversation > 0) {
+            console.warn(`[HomePage] Found ${unreadInConversation} unread messages in conversation ${conversation.id}`);
+          }
+
+          totalUnread += unreadInConversation;
+        }
+      }
+
+      console.warn(`[HomePage] Calculated Total Unread: ${totalUnread}`);
+      setUnreadCount(totalUnread);
+
+      // Also refresh the sidebar components
+      if (leftNavbarRef.current) {
+        leftNavbarRef.current.refreshUnreadCount();
+      }
+      if (agentSidebarRef.current) {
+        agentSidebarRef.current.refreshUnreadStatus();
+      }
+    } catch (err) {
+      console.error('Failed to check unread messages:', err);
+    }
+  };
+
+  // Fetch unread count on mount and periodically
+  useEffect(() => {
+    if (userData) {
+      checkUnreadMessages();
+
+      // Refresh unread count periodically (every 10 seconds for better responsiveness)
+      const interval = setInterval(checkUnreadMessages, 10000);
+
+      return () => clearInterval(interval);
+    }
+  }, [userData]);
+
+  // Callback to refresh unread count when messages are received
+  const handleUnreadChange = () => {
+    console.log('[HomePage] handleUnreadChange called');
+    checkUnreadMessages();
+  };
 
   // Unified avatar resolution logic
   const displayAvatarUrl = useMemo(() => {
@@ -138,7 +230,7 @@ export function HomePage() {
     }
   };
 
-  const handleMobileViewChange = (view: 'home' | 'chats') => {
+  const handleMobileViewChange = (view: 'home' | 'chats' | 'submissions') => {
     setActiveView(view);
     localStorage.setItem('activeView', view); // Save to localStorage
     if (view === 'chats') {
@@ -194,17 +286,8 @@ export function HomePage() {
           </p>
           <DropdownMenu
             trigger={
-              <button className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 hover:bg-primary/20 transition-all overflow-hidden border border-border/50">
-                {displayAvatarUrl ? (
-                  <img
-                    src={displayAvatarUrl}
-                    alt={userData?.name || firebaseUser?.displayName || 'User'}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <User className="h-5 w-5 text-zinc-500" />
-                )}
-
+              <button className="flex items-center justify-center w-10 h-10 rounded-full bg-zinc-200 dark:bg-zinc-600 hover:bg-zinc-300 dark:hover:bg-zinc-500 transition-all overflow-hidden">
+                <User className="h-5 w-5 text-zinc-900 dark:text-zinc-100" />
               </button>
             }
             align="right"
@@ -240,6 +323,7 @@ export function HomePage() {
               onUnreadChange={() => {
                 leftNavbarRef.current?.refreshUnreadCount();
                 agentSidebarRef.current?.refreshUnreadStatus();
+                handleUnreadChange();
               }}
             />
           )}
@@ -258,6 +342,7 @@ export function HomePage() {
                     onAgentSelect={handleAgentSelect}
                     onUnreadChange={() => {
                       leftNavbarRef.current?.refreshUnreadCount();
+                      handleUnreadChange();
                     }}
                   />
                 </div>
@@ -270,6 +355,7 @@ export function HomePage() {
                     onUnreadChange={() => {
                       leftNavbarRef.current?.refreshUnreadCount();
                       agentSidebarRef.current?.refreshUnreadStatus();
+                      handleUnreadChange();
                     }}
                     onBack={handleBackToList}
                     onVoiceClick={() => setIsVoiceOpen(true)}
@@ -314,6 +400,10 @@ export function HomePage() {
               />
             </div>
           </>
+        ) : activeView === 'submissions' ? (
+          <div className="flex-1 overflow-hidden bg-background">
+            <SubmissionsPage />
+          </div>
         ) : (
           <div className="flex-1 overflow-hidden">
             <Dashboard />
@@ -324,7 +414,7 @@ export function HomePage() {
       <BottomNavBar
         activeView={activeView}
         onViewChange={handleMobileViewChange}
-        unreadCount={0}
+        unreadCount={unreadCount}
       />
     </div>
   );

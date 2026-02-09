@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 
 interface GoogleSignInProps {
   onSuccess: () => void;
-  onSignUp: (token: string) => void;
+  onSignUp: (token: string, avatar?: string | null) => void;
 }
 
 export function GoogleSignIn({ onSuccess, onSignUp }: GoogleSignInProps) {
@@ -36,7 +36,7 @@ export function GoogleSignIn({ onSuccess, onSignUp }: GoogleSignInProps) {
         // A 500 is a SERVER CRASH (DB error), do NOT redirect to signup.
         if (err.response?.status === 404 || (err.response?.status === 401 && err.response?.data?.message !== "Unauthorized")) {
           // User not found, proceed to sign up
-          onSignUp(token);
+          onSignUp(token, user.photoURL);
         } else {
           // Is it a 500 error?
           if (err.response?.status === 500) {

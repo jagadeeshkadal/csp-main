@@ -11,7 +11,7 @@ const getSafeEnv = (name: string, fallback: string = "") => {
 };
 
 // Model name - confirmed available in your project via health check.
-const MODEL_NAME = getSafeEnv("GEMINI_MODEL", "gemini-2.0-flash");
+const MODEL_NAME = getSafeEnv("GEMINI_MODEL", "gemini-2.0-flash-lite");
 
 /**
  * Function to get active model and SDK instance
