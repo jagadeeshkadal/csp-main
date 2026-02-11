@@ -8,6 +8,7 @@ type AgentCreateData = {
   systemPrompt?: string | null;
   voice?: string | null;
   voiceSpeed?: number | null;
+  email?: string | null;
   isActive?: boolean;
 };
 
@@ -18,6 +19,7 @@ type AgentUpdateData = {
   systemPrompt?: string | null;
   voice?: string | null;
   voiceSpeed?: number | null;
+  email?: string | null;
   isActive?: boolean;
   deletedAt?: Date | null;
 };
@@ -61,17 +63,20 @@ const searchAgents = async (searchTerm: string): Promise<IAIAgent[]> => {
     where: {
       deletedAt: null,
       OR: [
-        { name: { contains: searchTerm } },
-        { description: { contains: searchTerm } },
+        { name: { contains: searchTerm, mode: 'insensitive' } },
+        { description: { contains: searchTerm, mode: 'insensitive' } },
+        // @ts-ignore
+        { email: { contains: searchTerm, mode: 'insensitive' } },
       ],
     },
     orderBy: { createdAt: 'desc' },
   });
-  // Filter case-insensitively in memory
+  // Filter case-insensitively in memory (backup)
   const lowerSearchTerm = searchTerm.toLowerCase();
   return agents.filter((agent: any) =>
     agent.name.toLowerCase().includes(lowerSearchTerm) ||
-    (agent.description && agent.description.toLowerCase().includes(lowerSearchTerm))
+    (agent.description && agent.description.toLowerCase().includes(lowerSearchTerm)) ||
+    (agent.email && agent.email.toLowerCase().includes(lowerSearchTerm))
   ) as IAIAgent[];
 };
 

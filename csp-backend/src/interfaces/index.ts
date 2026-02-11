@@ -21,6 +21,7 @@ export interface IAIAgent {
   systemPrompt?: string | null;
   voice?: string | null;
   voiceSpeed?: number | null;
+  email?: string | null;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;

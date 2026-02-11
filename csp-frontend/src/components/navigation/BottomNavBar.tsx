@@ -1,9 +1,9 @@
-import { Home, MessageCircle, FileText } from 'lucide-react';
+import { Home, MessageCircle, FileText, Video } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface BottomNavBarProps {
-    activeView: 'home' | 'chats' | 'submissions';
-    onViewChange: (view: 'home' | 'chats' | 'submissions') => void;
+    activeView: 'home' | 'chats' | 'submissions' | 'tutorials';
+    onViewChange: (view: 'home' | 'chats' | 'submissions' | 'tutorials') => void;
     unreadCount?: number;
 }
 
@@ -38,7 +38,7 @@ export function BottomNavBar({ activeView, onViewChange, unreadCount = 0 }: Bott
                     <div className="relative">
                         <MessageCircle className="h-6 w-6" />
                         {unreadCount > 0 && (
-                            <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center font-semibold">
+                            <span className="absolute -top-1 -right-1 bg-orange-600 text-white text-[10px] rounded-full h-4 w-4 flex items-center justify-center font-bold ring-1 ring-white/20">
                                 {unreadCount > 9 ? '9+' : unreadCount}
                             </span>
                         )}
@@ -58,6 +58,20 @@ export function BottomNavBar({ activeView, onViewChange, unreadCount = 0 }: Bott
                 >
                     <FileText className="h-6 w-6" />
                     <span className="text-xs mt-1">Submissions</span>
+                </button>
+
+                {/* Tutorials Tab */}
+                <button
+                    onClick={() => onViewChange('tutorials')}
+                    className={cn(
+                        "flex flex-col items-center justify-center flex-1 h-full transition-colors",
+                        activeView === 'tutorials'
+                            ? "text-primary dark:text-foreground"
+                            : "text-muted-foreground dark:text-foreground/70"
+                    )}
+                >
+                    <Video className="h-6 w-6" />
+                    <span className="text-xs mt-1">Tutorials</span>
                 </button>
             </div>
         </div>

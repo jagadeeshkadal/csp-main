@@ -35,6 +35,19 @@ export const AgentSidebar = forwardRef<AgentSidebarRef, AgentSidebarProps>(
           setLoading(true);
           setError(null);
           const response = await agentAPI.getAllAgents();
+          console.log('[DEBUG] Agents Response:', response);
+          if (response.agents && response.agents.length > 0) {
+            console.log('[DEBUG] First Agent:', response.agents[0]);
+            console.log('[DEBUG] 1st Agent Email Value:', response.agents[0].email);
+            const polyAgent = response.agents.find((a: any) => a.name.includes('Polycarbonate'));
+            if (polyAgent) {
+              console.log('[DEBUG] PolyAgent Found:', polyAgent);
+              console.log('[DEBUG] PolyAgent Email:', polyAgent.email);
+            } else {
+              console.log('[DEBUG] PolyAgent NOT FOUND in list');
+            }
+            console.log('[DEBUG] Email field present:', 'email' in response.agents[0]);
+          }
           setAgents(response.agents);
           setAllAgents(response.agents); // Store all agents for filtering
         } catch (err: any) {
@@ -100,7 +113,6 @@ export const AgentSidebar = forwardRef<AgentSidebarRef, AgentSidebarProps>(
           }
         }
 
-        console.log('[AgentSidebar] Unread agents:', Array.from(unreadSet));
         setUnreadAgents(unreadSet);
         setConversations(conversationMap);
       } catch (err) {
@@ -112,7 +124,6 @@ export const AgentSidebar = forwardRef<AgentSidebarRef, AgentSidebarProps>(
     // Expose refresh function via ref
     useImperativeHandle(ref, () => ({
       refreshUnreadStatus: () => {
-        console.log('[AgentSidebar] refreshUnreadStatus called via ref');
         checkUnreadMessages();
       },
     }), [checkUnreadMessages]);
@@ -137,11 +148,32 @@ export const AgentSidebar = forwardRef<AgentSidebarRef, AgentSidebarProps>(
       }
 
       const lowerSearch = searchTerm.toLowerCase();
+
+      // DEBUG: Log filtering for the first few characters to avoid spamming
+      if (lowerSearch.length > 2) {
+        console.log(`[DEBUG] Filtering for: "${lowerSearch}"`);
+      }
+
       return allAgents.filter(agent => {
-        // Split agent name into words (by spaces, &, and other separators)
+        // Search by Name: Check if any word starts with the search term
         const words = agent.name.toLowerCase().split(/[\s&]+/);
-        // Check if any word starts with the search term
-        return words.some(word => word.startsWith(lowerSearch));
+        const nameMatch = words.some(word => word.startsWith(lowerSearch));
+
+        // Search by Email: Check if email includes the search term (ignoring spaces)
+        const cleanSearch = lowerSearch.replace(/\s/g, '');
+        const cleanEmail = (agent.email || '').toLowerCase().replace(/\s/g, '');
+        const emailMatch = cleanEmail.length > 0 && cleanEmail.includes(cleanSearch);
+
+        // DEBUG: Log specific failure/success for a likely match
+        if (lowerSearch.length > 2 && (agent.name.toLowerCase().includes('poly') || (agent.email && agent.email.includes('poly')))) {
+          console.log(`[DEBUG] Checking Agent: ${agent.name}`);
+          console.log(`   > Email Value: "${agent.email}"`);
+          console.log(`   > Clean Email: "${cleanEmail}"`);
+          console.log(`   > Clean Search: "${cleanSearch}"`);
+          console.log(`   > Name Match: ${nameMatch}, Email Match: ${emailMatch}`);
+        }
+
+        return nameMatch || emailMatch;
       });
     }, [allAgents, searchTerm]);
 
@@ -149,7 +181,7 @@ export const AgentSidebar = forwardRef<AgentSidebarRef, AgentSidebarProps>(
       <div className="w-full md:w-80 bg-background flex flex-col h-full overflow-hidden">
         <div className="p-3 md:p-4 border-b flex-shrink-0">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">AI Agents</h2>
+            <h2 className="text-lg font-semibold">AI Conversations</h2>
           </div>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
@@ -215,7 +247,15 @@ export const AgentSidebar = forwardRef<AgentSidebarRef, AgentSidebarProps>(
                                 <Pin className="h-3 w-3 text-muted-foreground flex-shrink-0" />
                               )}
                               <div className="font-medium break-words whitespace-normal">{agent.name}</div>
+                              {hasUnread && (
+                                <div className="w-2 h-2 rounded-full bg-orange-500 flex-shrink-0" title="Unread messages" />
+                              )}
                             </div>
+                            {agent.email && (
+                              <div className="text-xs text-muted-foreground mt-0.5 break-all">
+                                {agent.email}
+                              </div>
+                            )}
                             {agent.description && (
                               <div className="text-xs text-muted-foreground mt-1 break-words whitespace-normal">
                                 {agent.description}
@@ -229,9 +269,7 @@ export const AgentSidebar = forwardRef<AgentSidebarRef, AgentSidebarProps>(
                       {conversationId && (
                         <div className="absolute right-2 top-1/2 -translate-y-1/2 z-10">
                           {/* Unread indicator - always visible, positioned above dropdown button */}
-                          {hasUnread && (
-                            <div className="absolute -top-1.5 right-0.5 w-2 h-2 rounded-full bg-blue-500 flex-shrink-0 z-20" title="Unread messages" />
-                          )}
+                          {/* Unread indicator - Removed (moved to name) */}
                           {/* Dropdown Menu - Show on hover */}
                           <div
                             className="opacity-0 group-hover:opacity-100 transition-opacity"

@@ -14,6 +14,7 @@ async function main() {
       systemPrompt: 'You are a helpful email assistant that helps users write clear, professional emails. Always maintain a polite and professional tone.',
       voice: 'bf_emma',
       voiceSpeed: 1,
+      email: 'emailassistant@gmail.com',
       isActive: true,
     },
     {
@@ -23,6 +24,7 @@ async function main() {
       systemPrompt: 'You are an expert programmer that helps users with coding questions, debugging, and code reviews. Provide clear explanations and best practices.',
       voice: 'bf_emma',
       voiceSpeed: 1,
+      email: 'codehelper@gmail.com',
       isActive: true,
     },
     {
@@ -32,6 +34,7 @@ async function main() {
       systemPrompt: 'You are a writing assistant that helps users improve their writing, grammar, and style. Be encouraging and constructive in your feedback.',
       voice: 'bf_emma',
       voiceSpeed: 1,
+      email: 'writingassistant@gmail.com',
       isActive: true,
     },
     {
@@ -41,6 +44,7 @@ async function main() {
       systemPrompt: 'You are a friendly customer support agent that helps resolve customer issues efficiently and politely. Always aim to provide solutions.',
       voice: 'bf_emma',
       voiceSpeed: 1,
+      email: 'customersupport@gmail.com',
       isActive: true,
     },
     {
@@ -50,6 +54,7 @@ async function main() {
       systemPrompt: 'You are a data analyst that helps users understand and analyze their data. Provide clear insights and actionable recommendations.',
       voice: 'bf_emma',
       voiceSpeed: 1,
+      email: 'dataanalyst@gmail.com',
       isActive: true,
     },
     {
@@ -59,6 +64,7 @@ async function main() {
       systemPrompt: 'You are a marketing expert that helps users create effective marketing strategies, campaigns, and content. Focus on ROI and engagement.',
       voice: 'bf_emma',
       voiceSpeed: 1,
+      email: 'marketingexpert@gmail.com',
       isActive: true,
     },
     {
@@ -68,6 +74,7 @@ async function main() {
       systemPrompt: 'You are a product manager that helps users plan products, create roadmaps, and prioritize features. Focus on user needs and business value.',
       voice: 'bf_emma',
       voiceSpeed: 1,
+      email: 'productmanager@gmail.com',
       isActive: true,
     },
     {
@@ -77,6 +84,7 @@ async function main() {
       systemPrompt: 'You are a design consultant that helps users improve their designs. Provide constructive feedback on UX, UI, and visual design principles.',
       voice: 'bf_emma',
       voiceSpeed: 1,
+      email: 'designconsultant@gmail.com',
       isActive: true,
     },
     {
@@ -225,6 +233,17 @@ async function main() {
       }),
       voice: 'bf_emma',
       voiceSpeed: 1,
+      email: 'polycarbonatevendor@gmail.com',
+      isActive: true,
+    },
+    {
+      name: 'Dragoncase Agent',
+      description: 'Assistant for Dragoncase inquiries',
+      avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=Dragoncase',
+      systemPrompt: 'You are a helpful assistant for Dragoncase.',
+      voice: 'bf_emma',
+      voiceSpeed: 1,
+      email: 'dragoncase@gmail.com',
       isActive: true,
     },
   ];
@@ -247,7 +266,7 @@ async function main() {
       console.log(`✅ Created agent: ${agent.name}`);
     } else {
       // Update existing agent to ensure deletedAt is null AND update voice fields + location
-      await prisma.aIAgent.updateMany({
+      const updateResult = await prisma.aIAgent.updateMany({
         where: {
           name: agent.name,
         },
@@ -256,10 +275,19 @@ async function main() {
           location: agent.location || null,
           voice: agent.voice,
           voiceSpeed: agent.voiceSpeed,
+          // @ts-ignore
+          email: agent.email, // Update email
           systemPrompt: agent.systemPrompt, // Also update system prompt to ensure it's current
         },
       });
-      console.log(`⏭️  Agent updated: ${agent.name} (voice/prompt synced)`);
+      console.log(`[DEBUG] Attempted update for ${agent.name} with email ${agent.email}`);
+      console.log(`[DEBUG] Update Result Count: ${updateResult.count}`);
+
+      if (updateResult.count === 0) {
+        console.error(`[ERROR] Failed to update agent ${agent.name} - Name mismatch?`);
+      } else {
+        console.log(`⏭️  Agent updated: ${agent.name} (voice/prompt/email synced)`);
+      }
     }
   }
 

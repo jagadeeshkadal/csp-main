@@ -10,19 +10,14 @@ import { authAPI } from '@/lib/api';
 // PASTE YOUR GOOGLE SCRIPT WEB APP URL HERE
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbys8wP6V0FxtQASS2MVWFoVO3SFF1n25OBNF2Vx6DTTtz-inEKGp-KJzau7fUU_vLMe/exec";
 
-const DEPARTMENTS = [
-    "Operations",
-    "Growth",
-    "Marketing",
-    "Finance",
-    "Product Management"
-];
+import { DEPARTMENTS } from '@/lib/constants';
 
 export function SubmissionsPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
     const [statusMessage, setStatusMessage] = useState('');
     const [isDragging, setIsDragging] = useState(false);
+    const [fileError, setFileError] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [selectedFileObj, setSelectedFileObj] = useState<File | null>(null);
@@ -109,6 +104,7 @@ export function SubmissionsPage() {
                 fileData: base64String
             }));
             setSelectedFileObj(file); // Store separate file object for local preview url
+            setFileError(false);
         };
         reader.readAsDataURL(file);
     };
@@ -153,8 +149,9 @@ export function SubmissionsPage() {
 
         // Manual validation for file requirement
         if (!formData.fileName || !formData.fileData) {
+            setFileError(true);
             setSubmitStatus('error');
-            setStatusMessage('Please upload a document (PDF, DOC, or DOCX) before submitting.');
+            setStatusMessage('FILE REQUIRED: Please upload a document before submitting.');
             return;
         }
 
@@ -239,7 +236,7 @@ export function SubmissionsPage() {
                         </Button>
                         <Button
                             type="button"
-                            variant="destructive"
+                            variant="secondary"
                             size="sm"
                             className="h-8 px-2 text-xs gap-1"
                             onClick={handleRemoveFile}
@@ -266,12 +263,24 @@ export function SubmissionsPage() {
                     <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 h-full divide-y md:divide-y-0 md:divide-x divide-border">
 
                         {/* Left Column: File Upload */}
-                        <div className="p-8 flex flex-col h-full bg-muted/5">
-                            <Label className="mb-4 text-lg font-medium">Upload Document <span className="text-destructive">*</span></Label>
+                        <div className="p-8 flex flex-col h-full bg-muted/5 relative">
+                            <div className="flex justify-between items-center mb-4">
+                                <Label className={cn("text-lg font-medium transition-colors", fileError ? "text-red-600 dark:text-red-400" : "")}>
+                                    Upload Document <span className="text-red-600 dark:text-red-400">*</span>
+                                </Label>
+                                {fileError && (
+                                    <span className="text-sm font-bold text-red-600 dark:text-red-400 animate-pulse">FILE REQUIRED</span>
+                                )}
+                            </div>
                             <div
                                 className={cn(
                                     "border-2 border-dashed rounded-xl flex-1 flex flex-col items-center justify-center transition-all cursor-pointer min-h-[300px] relative overflow-hidden",
-                                    isDragging ? "border-primary bg-primary/5 scale-[0.99]" : "border-muted-foreground/20 hover:border-primary/50 hover:bg-muted/30",
+                                    // Mutually exclusive background/border logic to avoid conflicts
+                                    fileError && !formData.fileName
+                                        ? "!border-red-600 !bg-red-500/10 dark:!bg-red-900/20"
+                                        : isDragging
+                                            ? "border-primary bg-primary/5 scale-[0.99]"
+                                            : "border-muted-foreground/20 hover:border-primary/50 hover:bg-muted/30",
                                     formData.fileName ? "bg-background border-primary/20" : ""
                                 )}
                                 onDragOver={onDragOver}
@@ -284,7 +293,6 @@ export function SubmissionsPage() {
                                     ref={fileInputRef}
                                     className="hidden"
                                     onChange={onFileSelect}
-                                    required={!formData.fileName}
                                     accept="image/*,application/pdf,.doc,.docx"
                                 />
 
@@ -297,10 +305,9 @@ export function SubmissionsPage() {
                                         </div>
                                         <div className="space-y-2">
                                             <p className="text-lg font-medium text-foreground">Drop files here to upload</p>
-                                            <p className="text-sm text-muted-foreground">or <span className="text-primary font-semibold hover:underline">browse files</span></p>
+                                            <p className="text-sm text-muted-foreground">or <span className="text-blue-500 font-semibold hover:underline bg-background/50 px-2 py-0.5 rounded">browse files</span></p>
                                         </div>
                                         <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground pt-2">
-                                            <span className="px-2 py-1 bg-muted rounded">IMAGES</span>
                                             <span className="px-2 py-1 bg-muted rounded">PDF</span>
                                             <span className="px-2 py-1 bg-muted rounded">DOCS</span>
                                         </div>

@@ -10,6 +10,7 @@ import { LeftNavbar, type LeftNavbarRef } from '@/components/navigation/LeftNavb
 import { BottomNavBar } from '@/components/navigation/BottomNavBar';
 import { Dashboard } from '@/components/dashboard/Dashboard';
 import { SubmissionsPage } from '@/pages/SubmissionsPage';
+import { TutorialsPage } from '@/pages/TutorialsPage';
 import { DropdownMenu, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { User, LogOut, UserCircle } from 'lucide-react';
 import type { User as FirebaseUser } from 'firebase/auth';
@@ -35,9 +36,9 @@ export function HomePage() {
   const [selectedAgent, setSelectedAgent] = useState<AIAgent | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
   // Restore active view from localStorage, default to 'home' for first-time users
-  const [activeView, setActiveView] = useState<'home' | 'chats' | 'submissions'>(() => {
+  const [activeView, setActiveView] = useState<'home' | 'chats' | 'submissions' | 'tutorials'>(() => {
     const saved = localStorage.getItem('activeView');
-    return (saved === 'home' || saved === 'chats' || saved === 'submissions') ? saved : 'home';
+    return (saved === 'home' || saved === 'chats' || saved === 'submissions' || saved === 'tutorials') ? saved : 'home';
   });
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isVoiceOpen, setIsVoiceOpen] = useState(false);
@@ -105,8 +106,6 @@ export function HomePage() {
       const response = await conversationAPI.getConversations();
       const conversations = response.conversations;
 
-      console.log(`[HomePage] Fetched ${conversations.length} conversations via API`);
-
       // Count total unread agent messages across all conversations
       let totalUnread = 0;
 
@@ -116,45 +115,28 @@ export function HomePage() {
         const isAgentActive = conversation.agent?.isActive !== false;
 
         if (conversation.agent && !isAgentActive) {
-          console.log(`[HomePage] Skipping inactive agent: ${conversation.agent.name}`);
           continue;
         }
 
         if (conversation.messages && conversation.messages.length > 0) {
-          // DEBUG: Inspect first message of each conversation
-          const firstMsg = conversation.messages[0];
-          console.log(`[HomePage] Conversation ${conversation.id} (Agent: ${conversation.agent?.name}) - Last Msg:`, {
-            senderType: firstMsg.senderType,
-            isRead: firstMsg.isRead,
-            typeOfIsRead: typeof firstMsg.isRead
-          });
-
           const unreadInConversation = conversation.messages.filter(
             (msg) => {
               const isAgent = msg.senderType && msg.senderType.toLowerCase() === 'agent';
-              // Handle string "false" or boolean false - use String() for safety against JSON types
-              const isRead = String(msg.isRead) === 'true';
+              // CRITICAL: Handle different types of isRead (boolean, string, or boolean-ish)
+              const isRead = msg.isRead === true || String(msg.isRead).toLowerCase() === 'true';
               const isUnread = !isRead;
 
               return isAgent && isUnread;
             }
           ).length;
 
-          if (unreadInConversation > 0) {
-            console.warn(`[HomePage] Found ${unreadInConversation} unread messages in conversation ${conversation.id}`);
-          }
-
           totalUnread += unreadInConversation;
         }
       }
 
-      console.warn(`[HomePage] Calculated Total Unread: ${totalUnread}`);
       setUnreadCount(totalUnread);
 
       // Also refresh the sidebar components
-      if (leftNavbarRef.current) {
-        leftNavbarRef.current.refreshUnreadCount();
-      }
       if (agentSidebarRef.current) {
         agentSidebarRef.current.refreshUnreadStatus();
       }
@@ -177,7 +159,6 @@ export function HomePage() {
 
   // Callback to refresh unread count when messages are received
   const handleUnreadChange = () => {
-    console.log('[HomePage] handleUnreadChange called');
     checkUnreadMessages();
   };
 
@@ -230,7 +211,7 @@ export function HomePage() {
     }
   };
 
-  const handleMobileViewChange = (view: 'home' | 'chats' | 'submissions') => {
+  const handleMobileViewChange = (view: 'home' | 'chats' | 'submissions' | 'tutorials') => {
     setActiveView(view);
     localStorage.setItem('activeView', view); // Save to localStorage
     if (view === 'chats') {
@@ -307,6 +288,7 @@ export function HomePage() {
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden relative pb-16 md:pb-0">
         {/* Desktop Navbar - Hidden on mobile */}
+        {/* Desktop Navbar - Hidden on mobile */}
         <LeftNavbar
           ref={leftNavbarRef}
           activeView={activeView}
@@ -314,14 +296,16 @@ export function HomePage() {
             setActiveView(view);
             localStorage.setItem('activeView', view);
           }}
-          className="hidden md:flex">
+          className="hidden md:flex"
+          unreadCount={unreadCount} // Pass unread count
+        >
           {activeView === 'chats' && (
             <AgentSidebar
               ref={agentSidebarRef}
               selectedAgentId={selectedAgent?.id || null}
               onAgentSelect={handleAgentSelect}
               onUnreadChange={() => {
-                leftNavbarRef.current?.refreshUnreadCount();
+                // leftNavbarRef ref updated automatically via prop
                 agentSidebarRef.current?.refreshUnreadStatus();
                 handleUnreadChange();
               }}
@@ -341,7 +325,6 @@ export function HomePage() {
                     selectedAgentId={null}
                     onAgentSelect={handleAgentSelect}
                     onUnreadChange={() => {
-                      leftNavbarRef.current?.refreshUnreadCount();
                       handleUnreadChange();
                     }}
                   />
@@ -353,7 +336,6 @@ export function HomePage() {
                     agent={selectedAgent}
                     conversationId={conversationId}
                     onUnreadChange={() => {
-                      leftNavbarRef.current?.refreshUnreadCount();
                       agentSidebarRef.current?.refreshUnreadStatus();
                       handleUnreadChange();
                     }}
@@ -385,8 +367,8 @@ export function HomePage() {
                 agent={selectedAgent}
                 conversationId={conversationId}
                 onUnreadChange={() => {
-                  leftNavbarRef.current?.refreshUnreadCount();
                   agentSidebarRef.current?.refreshUnreadStatus();
+                  handleUnreadChange(); // Ensure global count updates too
                 }}
                 onBack={handleBackToList}
                 onVoiceClick={() => setIsVoiceOpen(true)}
@@ -403,6 +385,10 @@ export function HomePage() {
         ) : activeView === 'submissions' ? (
           <div className="flex-1 overflow-hidden bg-background">
             <SubmissionsPage />
+          </div>
+        ) : activeView === 'tutorials' ? (
+          <div className="flex-1 overflow-hidden bg-background">
+            <TutorialsPage />
           </div>
         ) : (
           <div className="flex-1 overflow-hidden">

@@ -8,6 +8,7 @@ const createAgentSchema = z.object({
   description: z.string().optional().nullable(),
   avatar: z.string().url().optional().nullable(),
   systemPrompt: z.string().optional().nullable(),
+  email: z.string().email().optional().nullable(),
   isActive: z.boolean().optional().default(true),
 });
 
@@ -16,6 +17,7 @@ export const createAgent = async (params: {
   description?: string | null;
   avatar?: string | null;
   systemPrompt?: string | null;
+  email?: string | null;
   isActive?: boolean;
 }): Promise<IAIAgent> => {
   const parsed = createAgentSchema.safeParse(params);
@@ -28,6 +30,7 @@ export const createAgent = async (params: {
     description: parsed.data.description ?? undefined,
     avatar: parsed.data.avatar ?? undefined,
     systemPrompt: parsed.data.systemPrompt ?? undefined,
+    email: parsed.data.email ?? undefined,
     isActive: parsed.data.isActive ?? true
   });
 };
@@ -58,6 +61,7 @@ export const updateAgent = async (
     description?: string | null;
     avatar?: string | null;
     systemPrompt?: string | null;
+    email?: string | null;
     isActive?: boolean;
   }
 ): Promise<IAIAgent> => {
@@ -71,6 +75,7 @@ export const updateAgent = async (
     description: params.description ?? undefined,
     avatar: params.avatar ?? undefined,
     systemPrompt: params.systemPrompt ?? undefined,
+    email: params.email ?? undefined,
     isActive: params.isActive ?? undefined
   });
   if (!updatedAgent) {

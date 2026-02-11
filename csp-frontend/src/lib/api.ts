@@ -58,6 +58,7 @@ export type AIAgent = {
   systemPrompt?: string | null;
   voice?: string | null;
   voiceSpeed?: number | null;
+  email?: string | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;

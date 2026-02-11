@@ -196,7 +196,6 @@ export function EmailConversation({ agent, conversationId, onUnreadChange, onVoi
       try {
         // Only proceed if still on the same conversation
         if (conversationIdRef.current !== targetConversationId) {
-          console.log('[EmailConversation] Conversation changed, canceling send for:', targetConversationId);
           setSending(false);
           return;
         }
@@ -214,7 +213,6 @@ export function EmailConversation({ agent, conversationId, onUnreadChange, onVoi
             return [...filtered, response.message];
           });
         } else {
-          console.log('[EmailConversation] Conversation changed after send, not updating messages');
           setSending(false);
           setWaitingForAgent(false);
           return;
@@ -232,7 +230,6 @@ export function EmailConversation({ agent, conversationId, onUnreadChange, onVoi
 
           // Stop polling if conversation changed
           if (conversationIdRef.current !== targetConversationId) {
-            console.log('[EmailConversation] Conversation changed, stopping poll for:', targetConversationId);
             setWaitingForAgent(false);
             return;
           }
@@ -478,7 +475,7 @@ export function EmailConversation({ agent, conversationId, onUnreadChange, onVoi
                                 </span>
                                 <span className="text-xs text-muted-foreground ml-2 break-words">
                                   &lt;{message.senderType === 'agent'
-                                    ? `${agent.name.toLowerCase().replace(/\s+/g, '.')} @ai-assistant.com`
+                                    ? (agent.email || `${agent.name.toLowerCase().replace(/\s+/g, '.')}@ai-assistant.com`)
                                     : (userData?.email || 'user@example.com')}
                                   &gt;
                                 </span>
@@ -508,12 +505,12 @@ export function EmailConversation({ agent, conversationId, onUnreadChange, onVoi
                               {expandedDetails.has(message.id) && (
                                 <div className="text-xs text-muted-foreground space-y-1 mb-3 p-2 bg-muted/30 rounded border border-border/50 break-words">
                                   <div>From: {message.senderType === 'agent'
-                                    ? `${agent.name.toLowerCase().replace(/\s+/g, '.')} @ai-assistant.com`
+                                    ? (agent.email || `${agent.name.toLowerCase().replace(/\s+/g, '.')}@ai-assistant.com`)
                                     : (userData?.email || 'user@example.com')}
                                   </div>
                                   <div>To: {message.senderType === 'agent'
                                     ? (userData?.email || 'user@example.com')
-                                    : `${agent.name.toLowerCase().replace(/\s+/g, '.')} @ai-assistant.com`}
+                                    : (agent.email || `${agent.name.toLowerCase().replace(/\s+/g, '.')}@ai-assistant.com`)}
                                   </div>
                                   <div>Date: {formatEmailDate(message.createdAt)}</div>
                                 </div>

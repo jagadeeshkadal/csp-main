@@ -910,7 +910,6 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
             <Switch
               checked={autoSensitivity}
               onCheckedChange={setAutoSensitivity}
-              className="data-[state=checked]:bg-white data-[state=unchecked]:bg-zinc-600 [&>span]:bg-white"
             />
           </div>
 
@@ -924,7 +923,6 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
             <Switch
               checked={bargeInEnabled}
               onCheckedChange={setBargeInEnabled}
-              className="data-[state=checked]:bg-white data-[state=unchecked]:bg-zinc-600 [&>span]:bg-white"
             />
           </div>
 

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ChevronDown } from 'lucide-react';
+import { DEPARTMENTS } from '@/lib/constants';
 
 interface PhoneNumberFormProps {
   token: string;
@@ -178,29 +179,37 @@ export function PhoneNumberForm({ token, avatar, onSuccess }: PhoneNumberFormPro
             </div>
           </div>
 
+          {/* Department Name */}
+          <div className="space-y-2">
+            <Label htmlFor="departmentName" className="text-zinc-300">Department Name</Label>
+            <div className="relative">
+              <select
+                id="departmentName"
+                value={departmentName}
+                onChange={(e) => setDepartmentName(e.target.value)}
+                disabled={loading}
+                className="w-full h-12 px-3 bg-zinc-800/50 border border-zinc-700 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-zinc-900 appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <option value="" disabled className="bg-zinc-800 text-zinc-400">Select Department</option>
+                {DEPARTMENTS.map((dept) => (
+                  <option key={dept} value={dept} className="bg-zinc-800 text-white">
+                    {dept}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400 pointer-events-none" />
+            </div>
+          </div>
+
           {/* Team Number */}
           <div className="space-y-2">
             <Label htmlFor="teamNumber" className="text-zinc-300">Team Number</Label>
             <Input
               id="teamNumber"
-              type="number"
+              type="text"
               placeholder="Enter team number"
               value={teamNumber}
               onChange={(e) => setTeamNumber(e.target.value)}
-              disabled={loading}
-              className="h-12 bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-600 rounded-xl focus:ring-primary"
-            />
-          </div>
-
-          {/* Department Name */}
-          <div className="space-y-2">
-            <Label htmlFor="departmentName" className="text-zinc-300">Department Name</Label>
-            <Input
-              id="departmentName"
-              type="text"
-              placeholder="Enter department name"
-              value={departmentName}
-              onChange={(e) => setDepartmentName(e.target.value)}
               disabled={loading}
               className="h-12 bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-600 rounded-xl focus:ring-primary"
             />

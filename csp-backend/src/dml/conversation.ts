@@ -76,16 +76,11 @@ const getConversationsByUserId = async (userId: string): Promise<IEmailConversat
     where: {
       userId,
       deletedAt: null,
-      // Restore agent check to prevent errors with orphaned records
-      agent: {
-        is: {}
-      }
     },
     include: {
       agent: true,
       messages: {
         orderBy: { createdAt: 'desc' },
-        // Get all messages to check for unread status
       },
     },
     orderBy: { updatedAt: 'desc' },

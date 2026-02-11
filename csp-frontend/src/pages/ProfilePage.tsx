@@ -7,9 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Save, Loader2, Moon, Sun, User, Pencil, Trash2, RotateCcw, CheckCircle, XCircle } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, Moon, Sun, User, Pencil, Trash2, RotateCcw, CheckCircle, XCircle, ChevronDown } from 'lucide-react';
 import { DropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { cn } from '@/lib/utils';
+import { DEPARTMENTS } from '@/lib/constants';
 
 import { useTheme } from '@/contexts/ThemeContext';
 import type { User as FirebaseUser } from 'firebase/auth';
@@ -191,25 +192,33 @@ export function ProfilePage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="teamNumber" className="text-sm font-semibold">Team Number</Label>
-                  <Input
-                    id="teamNumber"
-                    type="number"
-                    value={formData.teamNumber}
-                    onChange={(e) => setFormData({ ...formData, teamNumber: e.target.value })}
-                    placeholder="Enter your team number"
-                    className="h-11 shadow-sm"
-                  />
+                  <Label htmlFor="departmentName" className="text-sm font-semibold">Department Name</Label>
+                  <div className="relative">
+                    <select
+                      id="departmentName"
+                      value={formData.departmentName}
+                      onChange={(e) => setFormData({ ...formData, departmentName: e.target.value })}
+                      className="flex h-11 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 shadow-sm appearance-none"
+                    >
+                      <option value="" disabled>Select Department</option>
+                      {DEPARTMENTS.map((dept) => (
+                        <option key={dept} value={dept}>
+                          {dept}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-3 top-3 h-4 w-4 opacity-50 pointer-events-none" />
+                  </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="departmentName" className="text-sm font-semibold">Department Name</Label>
+                  <Label htmlFor="teamNumber" className="text-sm font-semibold">Team Number</Label>
                   <Input
-                    id="departmentName"
+                    id="teamNumber"
                     type="text"
-                    value={formData.departmentName}
-                    onChange={(e) => setFormData({ ...formData, departmentName: e.target.value })}
-                    placeholder="Enter your department name"
+                    value={formData.teamNumber}
+                    onChange={(e) => setFormData({ ...formData, teamNumber: e.target.value })}
+                    placeholder="Enter your team number"
                     className="h-11 shadow-sm"
                   />
                 </div>
