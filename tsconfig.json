@@ -1,21 +1,12 @@
 {
-    "compilerOptions": {
-        "target": "ES2022",
-        "module": "NodeNext",
-        "moduleResolution": "NodeNext",
-        "esModuleInterop": true,
-        "strict": false,
-        "skipLibCheck": true,
-        "allowJs": true,
-        "rootDir": ".",
-        "outDir": "dist"
-    },
-    "include": [
-        "api/**/*"
-    ],
-    "exclude": [
-        "node_modules",
-        "csp-backend",
-        "csp-frontend"
+    "compilerOptions": {},
+    "files": [],
+    "references": [
+        {
+            "path": "./csp-frontend"
+        },
+        {
+            "path": "./csp-backend"
+        }
     ]
 }
