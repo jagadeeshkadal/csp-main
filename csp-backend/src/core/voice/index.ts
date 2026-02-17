@@ -69,7 +69,11 @@ ${agent.name}:`;
     }
 
     // Generate audio using Kokoro via Replicate
-    const agentAudioUrl = await generateAudioWithKokoro(agentResponse);
+    const agentAudioUrl = await generateAudioWithKokoro(
+      agentResponse,
+      agent.voice ?? undefined,
+      agent.voiceSpeed ?? undefined
+    );
 
     if (agentAudioUrl) {
       console.log(`[Voice] ✅ Audio: ${agentAudioUrl.substring(0, 60)}...`);
@@ -90,14 +94,18 @@ ${agent.name}:`;
 /**
  * Generate audio from text using Replicate TTS (default: Orpheus model)
  */
-const generateAudioWithKokoro = async (text: string): Promise<string | null> => {
+const generateAudioWithKokoro = async (
+  text: string,
+  voice?: string,
+  speed?: number
+): Promise<string | null> => {
   try {
     const replicateToken = process.env.REPLICATE_API_TOKEN;
     if (!replicateToken) {
       console.warn("[Replicate] ❌ No REPLICATE_API_TOKEN found");
       return null;
     }
-    console.log(`[Replicate] 🎵 Calling API (text: ${text.length} chars)...`);
+    console.log(`[Replicate] 🎵 Calling API (text: ${text.length} chars) | Voice: ${voice || 'default'} | Speed: ${speed || 'default'}`);
 
     const replicate = new Replicate({ auth: replicateToken });
 
@@ -109,11 +117,18 @@ const generateAudioWithKokoro = async (text: string): Promise<string | null> => 
     // Default voice based on model (Orpheus supports: tara, dan, josh, emma)
     // You can override with REPLICATE_TTS_VOICE env variable
     const defaultVoice = process.env.REPLICATE_TTS_VOICE || "tara";
+    const selectedVoice = voice || defaultVoice;
 
-    const input = {
+    // Use speed if provided, otherwise default (usually 1.0)
+    // Note: Some models might not support speed, but we'll include it in input if provided
+    const input: any = {
       text: text,
-      voice: defaultVoice
+      voice: selectedVoice
     };
+
+    if (speed) {
+      input.speed = speed;
+    }
 
     // Log request body before sending
     const requestBody = {

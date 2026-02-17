@@ -10,6 +10,8 @@ const createAgentSchema = z.object({
   systemPrompt: z.string().optional().nullable(),
   email: z.string().email().optional().nullable(),
   isActive: z.boolean().optional().default(true),
+  voice: z.string().optional().nullable(),
+  voiceSpeed: z.number().optional().nullable(),
 });
 
 export const createAgent = async (params: {
@@ -19,6 +21,8 @@ export const createAgent = async (params: {
   systemPrompt?: string | null;
   email?: string | null;
   isActive?: boolean;
+  voice?: string | null;
+  voiceSpeed?: number | null;
 }): Promise<IAIAgent> => {
   const parsed = createAgentSchema.safeParse(params);
   if (!parsed.success) {
@@ -31,7 +35,9 @@ export const createAgent = async (params: {
     avatar: parsed.data.avatar ?? undefined,
     systemPrompt: parsed.data.systemPrompt ?? undefined,
     email: parsed.data.email ?? undefined,
-    isActive: parsed.data.isActive ?? true
+    isActive: parsed.data.isActive ?? true,
+    voice: parsed.data.voice ?? undefined,
+    voiceSpeed: parsed.data.voiceSpeed ?? undefined,
   });
 };
 
@@ -63,6 +69,8 @@ export const updateAgent = async (
     systemPrompt?: string | null;
     email?: string | null;
     isActive?: boolean;
+    voice?: string | null;
+    voiceSpeed?: number | null;
   }
 ): Promise<IAIAgent> => {
   const agent = await agentDML.getAgentById(id);
@@ -76,7 +84,9 @@ export const updateAgent = async (
     avatar: params.avatar ?? undefined,
     systemPrompt: params.systemPrompt ?? undefined,
     email: params.email ?? undefined,
-    isActive: params.isActive ?? undefined
+    isActive: params.isActive ?? undefined,
+    voice: params.voice ?? undefined,
+    voiceSpeed: params.voiceSpeed ?? undefined,
   });
   if (!updatedAgent) {
     throw new NotFoundError("Failed to update agent");

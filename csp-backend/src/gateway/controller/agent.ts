@@ -45,7 +45,7 @@ const getAgent = async (req: Request, res: Response) => {
 
 const createAgent = async (req: Request, res: Response) => {
   try {
-    const { name, description, avatar, systemPrompt, email, isActive } = req.body;
+    const { name, description, avatar, systemPrompt, email, isActive, voice, voiceSpeed } = req.body;
     const agent = await agentCore.createAgent({
       name,
       description,
@@ -53,6 +53,8 @@ const createAgent = async (req: Request, res: Response) => {
       systemPrompt,
       email,
       isActive,
+      voice,
+      voiceSpeed,
     });
     res.status(201).json({ agent });
   } catch (e) {
@@ -67,7 +69,7 @@ const createAgent = async (req: Request, res: Response) => {
 const updateAgent = async (req: Request, res: Response) => {
   try {
     const id = req.params.id as string;
-    const { name, description, avatar, systemPrompt, email, isActive } = req.body;
+    const { name, description, avatar, systemPrompt, email, isActive, voice, voiceSpeed } = req.body;
     const agent = await agentCore.updateAgent(id, {
       name,
       description,
@@ -75,6 +77,8 @@ const updateAgent = async (req: Request, res: Response) => {
       systemPrompt,
       email,
       isActive,
+      voice,
+      voiceSpeed,
     });
     res.status(200).json({ agent });
   } catch (e) {
