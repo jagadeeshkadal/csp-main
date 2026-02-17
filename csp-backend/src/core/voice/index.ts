@@ -17,6 +17,24 @@ const MODEL_NAME = (process.env.GEMINI_MODEL || "gemini-2.0-flash-lite").trim().
  * Process text message with Gemini and generate voice response
  * Frontend handles speech-to-text, backend only processes text
  */
+const cleanVoiceResponse = (text: string): string => {
+  // Remove bold/italic markers (* and _)
+  let cleaned = text.replace(/[*_]/g, '');
+
+  // Remove markdown links [text](url) -> text
+  cleaned = cleaned.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+
+  // Remove code blocks
+  cleaned = cleaned.replace(/```[\s\S]*?```/g, '');
+  cleaned = cleaned.replace(/`([^`]+)`/g, '$1');
+
+  return cleaned.trim();
+};
+
+/**
+ * Process text message with Gemini and generate voice response
+ * Frontend handles speech-to-text, backend only processes text
+ */
 export const processVoiceText = async (
   userText: string,
   conversationId: string,
@@ -36,6 +54,7 @@ export const processVoiceText = async (
     const systemPrompt = `You are ${agent.name}, ${agent.description || "a helpful AI assistant"}. 
 You are having a voice conversation with the user. The user will speak to you, and you should respond naturally and conversationally.
 Keep your responses concise and clear for voice communication. Be friendly and engaging.
+IMPORTANT: Do not use any markdown formatting such as asterisks (*), bold, or italics. Speak plainly.
 
 ${conversationContext ? `Previous conversation context:\n${conversationContext}\n\n` : ""}`;
 
@@ -56,8 +75,8 @@ ${agent.name}:`;
     try {
       const result = await model.generateContent(fullPrompt);
       const response = result.response;
-      agentResponse = response.text();
-      console.log(`[Voice] ✅ Gemini: ${agentResponse.length} chars`);
+      agentResponse = cleanVoiceResponse(response.text());
+      console.log(`[Voice] ✅ Gemini (Cleaned): ${agentResponse.length} chars`);
     } catch (error: any) {
       // Handle rate limit errors
       if (error?.status === 429) {
