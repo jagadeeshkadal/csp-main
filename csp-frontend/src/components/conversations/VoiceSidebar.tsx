@@ -998,6 +998,11 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
         onError={(e) => {
           console.error('[VoiceSidebar] ❌ Audio loading error event:', e);
           const audio = audioRef.current;
+
+          // CRITICAL: Reset state on error to prevent deadlock
+          setIsPlayingAudio(false);
+          setStatusText('listening');
+
           if (audio?.error) {
             const errorMessages: { [key: number]: string } = {
               1: 'MEDIA_ERR_ABORTED - The user aborted the loading',
@@ -1238,9 +1243,9 @@ export function VoiceSidebar({ agent, conversationId, onClose, className }: Voic
                   </div>
                 )}
 
-                {/* AI's response */}
-                {isPlayingAudio && lastAgentResponse && (
-                  <div className="mb-2 p-3 bg-muted rounded-lg border border-border">
+                {/* AI's response - Show if playing audio OR if we have a recent response but processing is finished */}
+                {(isPlayingAudio || (!isProcessing && lastAgentResponse)) && (
+                  <div className="mb-2 p-3 bg-secondary/50 rounded-lg border border-border">
                     <p className="text-xs text-muted-foreground mb-1">{agent?.name || 'AI'}:</p>
                     <p className="text-sm text-foreground">{lastAgentResponse}</p>
                   </div>

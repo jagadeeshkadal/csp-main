@@ -3,6 +3,7 @@ import Replicate from "replicate";
 import { IAIAgent, IEmailMessage } from "../../interfaces/index.js";
 import { voiceDML } from "../../dml/voice.js";
 import { conversationDML } from "../../dml/conversation.js";
+import { prepareConversationContext } from "../gemini/index.js";
 
 const apiKey = process.env.GEMINI_API_KEY;
 if (!apiKey) {
@@ -24,17 +25,12 @@ export const processVoiceText = async (
   console.log(`[Voice] 💬 Processing: ${conversationId} | text: ${userText.length} chars`);
 
   try {
-    // Get conversation context (email messages)
-    const allMessages = await conversationDML.getMessagesByConversationId(conversationId);
-    console.log(`[Voice] 📚 Context: ${allMessages.length} messages`);
+    // Get conversation context (unified email + voice messages)
+    const allMessages = await conversationDML.getUnifiedMessagesByConversationId(conversationId);
+    console.log(`[Voice] 📚 Context: ${allMessages.length} messages (unified)`);
 
-    // Prepare conversation context
-    const conversationContext = allMessages
-      .map((msg: IEmailMessage) => {
-        const sender = msg.senderType === "user" ? "User" : agent.name;
-        return `${sender}: ${msg.content}`;
-      })
-      .join("\n\n");
+    // Prepare conversation context using the central summarization logic
+    const conversationContext = await prepareConversationContext(allMessages, agent);
 
     // Build system prompt for voice conversation
     const systemPrompt = `You are ${agent.name}, ${agent.description || "a helpful AI assistant"}. 

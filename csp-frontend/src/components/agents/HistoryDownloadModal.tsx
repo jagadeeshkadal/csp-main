@@ -171,26 +171,28 @@ async function mergeVoiceExchanges(fullConv: EmailConversation) {
             const voiceMessages: any[] = [];
 
             voiceExchanges.forEach((exchange: VoiceExchange) => {
+                const baseTime = new Date(exchange.createdAt).getTime();
+
                 // User part
                 voiceMessages.push({
-                    id: `voice-user-${exchange.id}`,
+                    id: `voice-u-${exchange.id}`,
                     conversationId: exchange.conversationId,
                     senderType: 'user',
-                    content: `[Voice Transcript] ${exchange.userTranscript}`,
+                    content: exchange.userTranscript || '(Audio message)',
                     isRead: true,
-                    createdAt: exchange.createdAt,
-                    updatedAt: exchange.createdAt
+                    createdAt: new Date(baseTime).toISOString(),
+                    updatedAt: new Date(baseTime).toISOString()
                 });
 
                 // Agent part
                 voiceMessages.push({
-                    id: `voice-agent-${exchange.id}`,
+                    id: `voice-a-${exchange.id}`,
                     conversationId: exchange.conversationId,
                     senderType: 'agent',
-                    content: `[Voice Response] ${exchange.agentResponse}`,
+                    content: exchange.agentResponse,
                     isRead: true,
-                    createdAt: exchange.createdAt, // Same timestamp
-                    updatedAt: exchange.createdAt
+                    createdAt: new Date(baseTime + 1).toISOString(), // Offset by 1ms for stable sorting
+                    updatedAt: new Date(baseTime + 1).toISOString()
                 });
             });
 

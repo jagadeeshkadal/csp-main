@@ -150,6 +150,55 @@ const getMessagesByConversationId = async (conversationId: string): Promise<IEma
   return messages as IEmailMessage[];
 };
 
+const getUnifiedMessagesByConversationId = async (conversationId: string): Promise<IEmailMessage[]> => {
+  // Fetch both types of messages in parallel
+  const [emailMessages, voiceExchanges] = await Promise.all([
+    prisma.emailMessage.findMany({
+      where: { conversationId },
+      orderBy: { createdAt: 'asc' },
+    }),
+    prisma.voiceExchange.findMany({
+      where: { conversationId },
+      orderBy: { createdAt: 'asc' },
+    }),
+  ]);
+
+  // Convert VoiceExchanges to Message format
+  const voiceMessages: IEmailMessage[] = [];
+  voiceExchanges.forEach((exchange) => {
+    // User part
+    if (exchange.userTranscript) {
+      voiceMessages.push({
+        id: `voice-u-${exchange.id}`,
+        conversationId: exchange.conversationId,
+        senderType: 'user',
+        content: exchange.userTranscript,
+        isRead: true,
+        createdAt: exchange.createdAt,
+        updatedAt: exchange.updatedAt,
+      } as IEmailMessage);
+    }
+
+    // Agent part
+    voiceMessages.push({
+      id: `voice-a-${exchange.id}`,
+      conversationId: exchange.conversationId,
+      senderType: 'agent',
+      content: exchange.agentResponse,
+      isRead: true,
+      createdAt: exchange.createdAt,
+      updatedAt: exchange.updatedAt,
+    } as IEmailMessage);
+  });
+
+  // Combine and sort by date
+  const allMessages = [...(emailMessages as IEmailMessage[]), ...voiceMessages].sort(
+    (a, b) => a.createdAt.getTime() - b.createdAt.getTime()
+  );
+
+  return allMessages;
+};
+
 const updateMessage = async (id: string, message: MessageUpdateData): Promise<IEmailMessage | null> => {
   const updatedMessage = await prisma.emailMessage.update({
     where: { id },
@@ -190,6 +239,7 @@ export const conversationDML = {
   createMessage,
   getMessageById,
   getMessagesByConversationId,
+  getUnifiedMessagesByConversationId,
   updateMessage,
   markMessagesAsRead,
   markMessagesAsUnread,
