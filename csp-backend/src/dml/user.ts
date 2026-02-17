@@ -30,6 +30,7 @@ const createUser = async (user: UserCreateData): Promise<IUser> => {
   const newUser = await prisma.user.create({
     data: {
       ...user,
+      email: user.email ? user.email.toLowerCase() : user.email,
       deletedAt: null, // Explicitly set to null for new users
     },
   });
@@ -47,8 +48,9 @@ const getUserByPhoneNumber = async (phoneNumber: string): Promise<IUser | null> 
 
 const getUserByEmail = async (email: string): Promise<IUser | null> => {
   console.time('db-getUserByEmail');
+  const normalizedEmail = email.toLowerCase();
   const user = await prisma.user.findFirst({
-    where: { email, deletedAt: null },
+    where: { email: normalizedEmail, deletedAt: null },
   });
   console.timeEnd('db-getUserByEmail');
   return user;
@@ -84,9 +86,13 @@ const getUserById = async (id: string): Promise<IUser | null> => {
 
 const updateUser = async (id: string, user: UserUpdateData): Promise<IUser | null> => {
   console.time('db-updateUser');
+  const updateData = { ...user };
+  if (updateData.email) {
+    updateData.email = updateData.email.toLowerCase();
+  }
   const updatedUser = await prisma.user.update({
     where: { id },
-    data: user,
+    data: updateData,
   });
   console.timeEnd('db-updateUser');
   return updatedUser;

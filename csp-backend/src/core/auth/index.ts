@@ -76,27 +76,39 @@ export const ssoSignup = async (params: { token: string; phoneNumber: string; te
   // Check if user already exists by email (for Google sign-in) or phone number
   let user = null;
 
-  // Try to find by email first (for Google users)
-  if (decoded.email) {
-    user = await userDML.getUserByEmail(decoded.email);
+  // Try to find by email first (for Google users) - Normalize for comparison
+  const normalizedEmail = decoded.email ? decoded.email.toLowerCase() : null;
+  if (normalizedEmail) {
+    console.log(`[ssoSignup] Looking up existing user by normalized email: ${normalizedEmail}`);
+    user = await userDML.getUserByEmail(normalizedEmail);
   }
 
-  // Also check by phone number
+  // Also check by phone number if not found by email
   if (!user) {
+    console.log(`[ssoSignup] User not found by email, checking by phone number: ${phoneNumber}`);
     user = await userDML.getUserByPhoneNumber(phoneNumber);
   }
 
   // IF USER EXISTS: Instead of throwing error, Just Log them In!
   if (user) {
-    console.log(`[ssoSignup] User already exists (ID: ${user.id}). logging in instead of error.`);
+    console.log(`[ssoSignup] User already exists (ID: ${user.id}). Syncing details and logging in.`);
 
     // Generate custom JWT
     const userIdString = String(user.id);
     const customJWT = await createToken(userIdString);
 
-    // Update JWT and avatar if Google photoURL exists but user doesn't have avatar
-    // Also update team/department if provided
+    // Update JWT and profile info if it's missing or different
     const updateData: any = { jwt: customJWT };
+
+    // Sync email and name if they are missing or different
+    if (normalizedEmail && user.email !== normalizedEmail) {
+      console.log(`[ssoSignup] Syncing/Correcting email: ${user.email} -> ${normalizedEmail}`);
+      updateData.email = normalizedEmail;
+    }
+    if (decoded.name && user.name !== decoded.name) {
+      console.log(`[ssoSignup] Syncing name: ${user.name} -> ${decoded.name}`);
+      updateData.name = decoded.name;
+    }
 
     // Prioritize provided avatar, then token picture
     const newAvatar = avatar || decoded.picture;
@@ -109,21 +121,16 @@ export const ssoSignup = async (params: { token: string; phoneNumber: string; te
 
     await userDML.updateUser(user.id, updateData);
 
-    return { user, token: customJWT };
+    return { user: { ...user, ...updateData }, token: customJWT };
   }
-
-  // Prioritize provided avatar, then token picture
-  // UPDATE: User requested to REMOVE profile photo completely.
-  // We will ignore any provided avatar and set it to null/default.
-  const finalAvatar = null; // Decoded.picture || null (Disabled)
 
   // Create new user - include avatar from Google photoURL if available
   user = await userDML.createUser({
     phoneNumber,
-    phoneExtension: "+91", // Default, can be extracted from phone number if needed
-    email: decoded.email || null,
+    phoneExtension: "+91", // Default
+    email: normalizedEmail,
     name: decoded.name || null,
-    avatar: finalAvatar, // Force null
+    avatar: null, // Force null as per user request
     teamNumber: teamNumber || null,
     departmentName: departmentName || null,
   });
@@ -170,38 +177,46 @@ export const signIn = async (params: { token: string }) => {
 
   const phoneNumber = decoded.phone_number;
   const email = decoded.email;
+  const normalizedEmail = email ? email.toLowerCase() : null;
 
-  console.log(`[signIn] Decoded token - Email: ${email}, Phone: ${phoneNumber}`);
+  console.log(`[signIn] Decoded token - Email (orig): ${email}, Email (norm): ${normalizedEmail}, Phone: ${phoneNumber}`);
 
   let user = null;
 
   console.time('signIn-db-lookup');
   try {
-    // Try to find by email first (for Google sign-in users) - most common case
-    if (email) {
-      console.log(`[signIn] Looking up user by email: ${email}`);
+    // Try to find by email first (normalized)
+    if (normalizedEmail) {
+      console.log(`[signIn] Attempting DB lookup by email: "${normalizedEmail}"`);
       console.time('signIn-db-email');
-      user = await userDML.getUserByEmail(email);
+      user = await userDML.getUserByEmail(normalizedEmail);
       console.timeEnd('signIn-db-email');
-      console.log(`[signIn] User lookup by email result: ${user ? user.id : 'not found'}`);
-    } else {
-      console.log('[signIn] No email found in token');
+      console.log(`[signIn] Lookup by email result: ${user ? `Found user (ID: ${user.id})` : 'Not found'}`);
     }
 
-    // If not found and we have phone number, try by phone number (for phone auth users)
+    // If not found by email, try by phone number (Self-healing lookup)
     if (!user && phoneNumber) {
+      console.log(`[signIn] Attempting DB lookup by phone number (fallback): "${phoneNumber}"`);
       console.time('signIn-db-phone');
       user = await userDML.getUserByPhoneNumber(phoneNumber);
       console.timeEnd('signIn-db-phone');
+
+      if (user) {
+        console.log(`[signIn] Found user by phone number. Syncing email: ${normalizedEmail}`);
+        // If found by phone, sync the email immediately so next sign-in is faster/automatic
+        if (normalizedEmail && user.email !== normalizedEmail) {
+          await userDML.updateUser(user.id, { email: normalizedEmail });
+        }
+      }
     }
   } catch (err) {
-    console.error("[signIn] DB lookup failed:", err);
-    throw new Error("Database lookup failed");
+    console.error("[signIn] Database lookup failed:", err);
+    throw new Error("Database lookup failed during sign-in");
   }
   console.timeEnd('signIn-db-lookup');
 
   if (!user) {
-    console.log('[signIn] User not found, throwing 401');
+    console.log('[signIn] User not found by email or phone. Access denied (Loop avoidance).');
     console.timeEnd('signIn-total');
     throw new UnauthorizedError("User not found. Please sign up first.");
   }
